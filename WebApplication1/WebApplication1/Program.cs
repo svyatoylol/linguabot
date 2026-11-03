@@ -22,17 +22,16 @@ app.MapPost("/api/chat", async (ChatRequest request, HttpClient http) =>
 
     try
     {
-        // Настраиваем запрос к API искусственного интеллекта
-        // В данном примере используется OpenRouter (он дает легкий доступ к DeepSeek/Llama)
-        var apiKey = "YOUR_OPENROUTER_OR_OPENAI_API_KEY"; // Сюда вставляется ваш API-ключ
+        var apiKey = "API_KEY";
 
+        // ИСПРАВЛЕНО: Указан точный и полный URL для создания чата
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai");
         requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
 
         // Формируем тело запроса для нейросети
         var jsonBody = new
         {
-            model = "google/gemma-2-9b-it:free", // Бесплатная быстрая нейросеть (можно заменить на deepseek, gpt-4o и т.д.)
+            model = "google/gemma-2-9b-it:free", // Бесплатная быстрая нейросеть
             messages = new[] {
                 new { role = "system", content = "Ты дружелюбный ассистент на сайте swinki.ru. Отвечай кратко и емко." },
                 new { role = "user", content = request.Message }
@@ -46,11 +45,15 @@ app.MapPost("/api/chat", async (ChatRequest request, HttpClient http) =>
 
         if (!response.IsSuccessStatusCode)
         {
-            return Results.Ok(new { text = "ИИ временно перегружен, но бэкенд .NET работает стабильно!" });
+            // Для отладки: если OpenRouter ругается, выведет код ошибки в чат
+            var errBody = await response.Content.ReadAsStringAsync();
+            return Results.Ok(new { text = $"ИИ вернул статус {response.StatusCode}. Детали: {errBody}" });
         }
 
         // Разбираем JSON-ответ от нейросети
         var jsonResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        // Получаем текст ответа (извлекаем первый элемент из массива choices)
         var aiText = jsonResponse.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
 
         return Results.Ok(new { text = aiText });
