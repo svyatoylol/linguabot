@@ -1,0 +1,29 @@
+## Сборка и компиляция (Артефакты .NET)
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+## Системные кэши и настройки Visual Studio
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Локальные настройки и секреты (чтобы не слить ключи ИИ на гитхаб!)
+appsettings.Development.json
+*.secrets.json
+.env
+
+## Логи и временные файлы сервера
+*.log
+_ReSharper*/
+[Tt]humbs.db
+.DS_Store
+
+## Пакеты зависимостей (NuGet)
+project.lock.json
+project.fragment.lock.json
+artifacts/

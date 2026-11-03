@@ -1,2 +1,0 @@
-wwwroot\index.html
-C:\Users\IntroGenious\Desktop\Linguobot\WebApplication1\WebApplication1\wwwroot\index.html
