@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Свинки AI Чат</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 90vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #007acc;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .messages-area {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 15px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        .user-msg {
+            background: #4caf50;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+
+        .ai-msg {
+            background: #007acc;
+            color: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+
+        .loading-msg {
+            color: #888;
+            font-style: italic;
+            align-self: flex-start;
+            padding-left: 5px;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #eee;
+            background: white;
+            gap: 10px;
+        }
+
+            .input-area input {
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                outline: none;
+            }
+
+            .input-area button {
+                padding: 10px 20px;
+                background: #007acc;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+
+                .input-area button:hover {
+                    background: #005999;
+                }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">Свинки AI Чат (.NET Core)</div>
+        <div class="messages-area" id="messagesArea">
+            <div class="message ai-msg">Привет! Архитектура приложения настроена. Напиши мне что-нибудь, чтобы протестировать бэкенд!</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Введите сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
+    </div>
+
+    <script>async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const messagesArea = document.getElementById('messagesArea');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            // 1. Выводим на экран сообщение пользователя
+            const userDiv = document.createElement('div');
+            userDiv.className = 'message user-msg';
+            userDiv.innerText = text;
+            messagesArea.appendChild(userDiv);
+            input.value = '';
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+
+            // 2. Показываем анимацию загрузки ("ИИ думает...")
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message loading-msg';
+            loadingDiv.id = 'loading';
+            loadingDiv.innerText = 'ИИ печатает...';
+            messagesArea.appendChild(loadingDiv);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+
+            try {
+                // 3. Делаем реальный запрос к нашему .NET API эндпоинту
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await response.json();
+
+                // Удаляем индикатор загрузки
+                document.getElementById('loading').remove();
+
+                // 4. Выводим ответ, который прислал сервер на C#
+                const aiDiv = document.createElement('div');
+                aiDiv.className = 'message ai-msg';
+                aiDiv.innerText = data.text;
+                messagesArea.appendChild(aiDiv);
+            } catch (error) {
+                document.getElementById('loading').remove();
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'message ai-msg';
+                errorDiv.style.background = '#f44336';
+                errorDiv.innerText = 'Ошибка: Бэкенд не отвечает.';
+                messagesArea.appendChild(errorDiv);
+            }
+
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }</script>
+</body>
+</html>
