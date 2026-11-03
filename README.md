@@ -1,1 +1,1 @@
-# linguobot
+# linguabot
