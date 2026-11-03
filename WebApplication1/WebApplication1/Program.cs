@@ -1,66 +1,81 @@
-using System;
-using System.Net.Http;
+using System.Linq;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Добавляем HTTP-клиент для отправки запросов к нейросети
 builder.Services.AddHttpClient();
 
 var app = builder.Build();
-
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapPost("/api/chat", async (ChatRequest request, HttpClient http) =>
+// ===== ТОЛЬКО ЭТО НУЖНО МЕНЯТЬ =====
+var apiKey = "API_KEY";
+var model = "gemini-3.6-flash";
+var showErrors = true; // пока тестируете: true. На боевом сайте поставьте false
+// ===================================
+
+var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+
+app.MapPost("/api/chat", async (ChatRequest request, IHttpClientFactory factory) =>
 {
     if (string.IsNullOrWhiteSpace(request.Message))
         return Results.BadRequest(new { text = "Сообщение не может быть пустым." });
 
+    if (request.Message.Length > 2000)
+        return Results.BadRequest(new { text = "Сообщение слишком длинное." });
+
     try
     {
-        var apiKey = "API_KEY";
-
-        // ИСПРАВЛЕНО: Указан точный и полный URL для создания чата
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai");
-        requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
-
-        // Формируем тело запроса для нейросети
-        var jsonBody = new
+        var body = new
         {
-            model = "google/gemma-2-9b-it:free", // Бесплатная быстрая нейросеть
-            messages = new[] {
-                new { role = "system", content = "Ты дружелюбный ассистент на сайте swinki.ru. Отвечай кратко и емко." },
-                new { role = "user", content = request.Message }
+            contents = new[] { new { parts = new[] { new { text = request.Message } } } },
+            systemInstruction = new
+            {
+                parts = new[] { new { text = "Ты дружелюбный ассистент на сайте swinki.ru. Отвечай кратко, емко и на русском языке." } }
             }
         };
 
-        requestMessage.Content = JsonContent.Create(jsonBody);
+        var http = factory.CreateClient();
+        using var req = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body)
+        };
+        req.Headers.Add("x-goog-api-key", apiKey);
 
-        // Отправляем запрос в ИИ
-        var response = await http.SendAsync(requestMessage);
+        using var response = await http.SendAsync(req);
 
         if (!response.IsSuccessStatusCode)
         {
-            // Для отладки: если OpenRouter ругается, выведет код ошибки в чат
-            var errBody = await response.Content.ReadAsStringAsync();
-            return Results.Ok(new { text = $"ИИ вернул статус {response.StatusCode}. Детали: {errBody}" });
+            var err = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Gemini error {(int)response.StatusCode}: {err}");
+
+            var msg = showErrors
+                ? $"Ошибка Google {(int)response.StatusCode}: {err}"
+                : "Сервис ИИ временно недоступен.";
+            return Results.Json(new { text = msg }, statusCode: 502);
         }
 
-        // Разбираем JSON-ответ от нейросети
-        var jsonResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        // Получаем текст ответа (извлекаем первый элемент из массива choices)
-        var aiText = jsonResponse.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+        string? aiText = null;
+        if (json.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0 &&
+            candidates[0].TryGetProperty("content", out var content) &&
+            content.TryGetProperty("parts", out var parts) && parts.GetArrayLength() > 0)
+        {
+            aiText = string.Concat(parts.EnumerateArray()
+                .Select(p => p.TryGetProperty("text", out var t) ? t.GetString() : null));
+        }
 
-        return Results.Ok(new { text = aiText });
+        return string.IsNullOrEmpty(aiText)
+            ? Results.Json(new { text = "Не удалось получить ответ. Попробуйте переформулировать вопрос." }, statusCode: 502)
+            : Results.Ok(new { text = aiText });
     }
     catch (Exception ex)
     {
-        return Results.Ok(new { text = $"Ошибка при обращении к ИИ: {ex.Message}" });
+        Console.WriteLine(ex);
+        var msg = showErrors ? $"Ошибка сервера: {ex.Message}" : "Внутренняя ошибка сервера.";
+        return Results.Json(new { text = msg }, statusCode: 500);
     }
 });
 
