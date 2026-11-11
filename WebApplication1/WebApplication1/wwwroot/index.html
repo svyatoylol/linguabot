@@ -105,6 +105,26 @@
                 .input-area button:hover {
                     background: #005999;
                 }
+
+                .input-area button.voice-btn {
+                    padding: 10px 15px;
+                    background: #5c6bc0;
+                    font-size: 1.1em;
+                }
+
+                .input-area button.voice-btn:hover {
+                    background: #3f51b5;
+                }
+
+                .input-area button.recording {
+                    background: #e53935 !important;
+                    animation: pulse 1s infinite alternate;
+                }
+
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(1.08); opacity: 0.7; }
+        }
     </style>
 </head>
 <body>
@@ -112,15 +132,91 @@
     <div class="chat-container">
         <div class="chat-header">Свинки AI Чат (.NET Core)</div>
         <div class="messages-area" id="messagesArea">
-            <div class="message ai-msg">Привет! Архитектура приложения настроена. Напиши мне что-нибудь, чтобы протестировать бэкенд!</div>
+            <div class="message ai-msg">Привет! Архитектура приложения настроена. Напиши мне что-нибудь или используй микрофон, чтобы протестировать бэкенд!</div>
         </div>
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Введите сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+            <button id="voiceBtn" class="voice-btn" type="button" onclick="toggleVoiceRecording()" title="Голосовой ввод">🎤</button>
             <button onclick="sendMessage()">Отправить</button>
         </div>
     </div>
 
-    <script>async function sendMessage() {
+    <script>
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        async function toggleVoiceRecording() {
+            const voiceBtn = document.getElementById('voiceBtn');
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    voiceBtn.classList.remove('recording');
+                    voiceBtn.innerText = '🎤';
+                    voiceBtn.disabled = true;
+
+                    // Останавливаем все аудио-треки для освобождения микрофона
+                    stream.getTracks().forEach(track => track.stop());
+
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    if (audioBlob.size === 0) {
+                        voiceBtn.disabled = false;
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.webm');
+
+                    // Индикатор распознавания
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'message loading-msg';
+                    loadingDiv.id = 'voice-loading';
+                    loadingDiv.innerText = 'Распознавание речи (Groq Whisper)...';
+                    document.getElementById('messagesArea').appendChild(loadingDiv);
+                    document.getElementById('messagesArea').scrollTop = document.getElementById('messagesArea').scrollHeight;
+
+                    try {
+                        const res = await fetch('/api/voice', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        document.getElementById('voice-loading')?.remove();
+
+                        if (res.ok && data.text) {
+                            document.getElementById('userInput').value = data.text;
+                            sendMessage();
+                        } else {
+                            alert(data.text || 'Не удалось распознать речь.');
+                        }
+                    } catch (err) {
+                        document.getElementById('voice-loading')?.remove();
+                        alert('Ошибка отправки аудио: ' + err.message);
+                    } finally {
+                        voiceBtn.disabled = false;
+                    }
+                };
+
+                mediaRecorder.start();
+                voiceBtn.classList.add('recording');
+                voiceBtn.innerText = '⏹';
+            } catch (err) {
+                alert('Не удалось получить доступ к микрофону: ' + err.message);
+            }
+        }
+
+        async function sendMessage() {
             const input = document.getElementById('userInput');
             const messagesArea = document.getElementById('messagesArea');
             const text = input.value.trim();
