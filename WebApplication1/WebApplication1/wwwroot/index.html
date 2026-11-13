@@ -67,6 +67,29 @@
             color: white;
             align-self: flex-start;
             border-bottom-left-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .speak-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            opacity: 0.85;
+            color: white;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .speak-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.1);
         }
 
         .loading-msg {
@@ -254,7 +277,18 @@
                 // 4. Выводим ответ, который прислал сервер на C#
                 const aiDiv = document.createElement('div');
                 aiDiv.className = 'message ai-msg';
-                aiDiv.innerText = data.text;
+
+                const textSpan = document.createElement('span');
+                textSpan.innerText = data.text;
+                aiDiv.appendChild(textSpan);
+
+                const speakBtn = document.createElement('button');
+                speakBtn.className = 'speak-btn';
+                speakBtn.title = 'Озвучить ответ (Piper TTS)';
+                speakBtn.innerText = '🔊';
+                speakBtn.onclick = () => playTts(speakBtn, data.text);
+                aiDiv.appendChild(speakBtn);
+
                 messagesArea.appendChild(aiDiv);
             } catch (error) {
                 document.getElementById('loading').remove();
@@ -266,6 +300,41 @@
             }
 
             messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        async function playTts(btn, text) {
+            if (btn.dataset.playing === 'true') return;
+            btn.dataset.playing = 'true';
+            const originalText = btn.innerText;
+            btn.innerText = '⏳';
+
+            try {
+                const url = '/api/tts?text=' + encodeURIComponent(text);
+                const audio = new Audio(url);
+
+                audio.onended = () => {
+                    btn.dataset.playing = 'false';
+                    btn.innerText = originalText;
+                };
+
+                audio.onerror = async () => {
+                    btn.dataset.playing = 'false';
+                    btn.innerText = originalText;
+                    try {
+                        const res = await fetch(url);
+                        const err = await res.json();
+                        alert(err.error || 'Ошибка воспроизведения речи.');
+                    } catch {
+                        alert('Не удалось получить озвучку от сервера.');
+                    }
+                };
+
+                await audio.play();
+            } catch (err) {
+                btn.dataset.playing = 'false';
+                btn.innerText = originalText;
+                alert('Ошибка воспроизведения: ' + err.message);
+            }
         }</script>
 </body>
 </html>
