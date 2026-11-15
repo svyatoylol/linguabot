@@ -17,6 +17,11 @@ builder.Services.AddChatServices(builder.Configuration);
 
 // 4. Подключение к БД
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    // Локальный фоллбэк для тестовой БД (Docker PostgreSQL)
+    connectionString = "Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=postgres";
+}
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 

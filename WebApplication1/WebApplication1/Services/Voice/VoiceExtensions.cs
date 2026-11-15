@@ -53,6 +53,9 @@ namespace VoiceService
 
             services.AddSingleton<ITtsService, PiperTtsService>();
 
+            // 3. Регистрация голосового оркестратора (STT + Chat + TTS)
+            services.AddScoped<IVoiceOrchestrator, VoiceOrchestrator>();
+
             return services;
         }
 
@@ -160,6 +163,83 @@ namespace VoiceService
                     return Results.Json(new { error = msg }, statusCode: 500);
                 }
             });
+
+            // Voice Mode / Voice Dialog: Сквозное голосовое общение (STT -> Gemini Chat -> Piper TTS)
+            var handleVoiceDialog = async (
+                IFormFile? audio,
+                HttpContext context,
+                IVoiceOrchestrator orchestrator,
+                IWebHostEnvironment env,
+                CancellationToken ct) =>
+            {
+                var file = audio;
+                if (file == null && context.Request.HasFormContentType && context.Request.Form.Files.Count > 0)
+                {
+                    file = context.Request.Form.Files[0];
+                }
+
+                if (file == null || file.Length == 0)
+                {
+                    return Results.BadRequest(new { error = "Аудиофайл не передан или пуст." });
+                }
+
+                int? sessionId = null;
+                string? scenario = null;
+                string? lang = null;
+                string? level = null;
+
+                if (context.Request.HasFormContentType)
+                {
+                    var form = context.Request.Form;
+                    if (form.TryGetValue("sessionId", out var sIdStr) && int.TryParse(sIdStr, out var sId))
+                    {
+                        sessionId = sId;
+                    }
+                    if (form.TryGetValue("scenario", out var sc)) scenario = sc;
+                    if (form.TryGetValue("lang", out var l)) lang = l;
+                    if (form.TryGetValue("level", out var lvl)) level = lvl;
+                }
+
+                try
+                {
+                    await using var stream = file.OpenReadStream();
+                    var result = await orchestrator.ProcessVoiceAsync(
+                        stream,
+                        file.FileName,
+                        sessionId,
+                        scenario,
+                        lang,
+                        level,
+                        ct);
+
+                    if (!result.IsSuccess)
+                    {
+                        return Results.Json(new
+                        {
+                            error = result.Error,
+                            userText = result.UserText
+                        }, statusCode: result.StatusCode);
+                    }
+
+                    return Results.Ok(new
+                    {
+                        userText = result.UserText,
+                        aiText = result.AiText,
+                        audioBase64 = result.AudioBase64,
+                        audioMimeType = result.AudioMimeType,
+                        detectedLanguage = result.DetectedLanguage,
+                        pronunciationScore = result.PronunciationScore
+                    });
+                }
+                catch (Exception ex)
+                {
+                    var msg = env.IsDevelopment() ? $"Ошибка оркестратора: {ex.Message}" : "Внутренняя ошибка сервиса голосового диалога.";
+                    return Results.Json(new { error = msg }, statusCode: 500);
+                }
+            };
+
+            app.MapPost("/api/voice/dialog", handleVoiceDialog).DisableAntiforgery();
+            app.MapPost("/api/voice/mode", handleVoiceDialog).DisableAntiforgery();
 
             return app;
         }
