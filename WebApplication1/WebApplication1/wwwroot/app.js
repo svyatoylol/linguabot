@@ -8,6 +8,10 @@ const API = {
 
 const STORAGE_KEY = "linguabot_onboarding";
 
+const voiceButton = document.getElementById("voiceButton");
+voiceButton.addEventListener("click", () => {
+    alert("Голосовой чат скоро появится!");
+});
 const languageNames = {
     en: "Английский",
     pl: "Польский",

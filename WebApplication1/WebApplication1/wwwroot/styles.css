@@ -493,3 +493,39 @@ button {
         flex: 1;
     }
 }
+
+
+.voice-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    border: 1px solid #1769d2;
+    border-radius: 8px;
+    background: white;
+    color: #1769d2;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: 0.15s;
+}
+
+    .voice-button:hover {
+        background: #f1f6ff;
+    }
+
+.voice-icon {
+    font-size: 18px;
+}
+
+@media (max-width: 600px) {
+    .voice-button {
+        padding: 0 12px;
+    }
+
+    .voice-label {
+        display: none;
+    }
+}
+

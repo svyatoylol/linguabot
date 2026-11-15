@@ -184,17 +184,24 @@
             <div class="system">Инициализация приложения...</div>
         </main>
 
-        <form class="input-area hidden" id="messageForm">
+
+        <form class="input-area" id="messageForm">
             <input type="text"
                    id="userInput"
                    placeholder="Напишите сообщение..."
                    autocomplete="off"
                    disabled>
 
+            <button type="button" id="voiceButton" class="voice-button" title="Голосовой чат">
+                <span class="voice-icon">🎙</span>
+                <span class="voice-label">Голосовой чат</span>
+            </button>
+
             <button type="submit" id="sendButton" disabled>
                 Отправить
             </button>
         </form>
+
     </div>
 </body>
 </html>
