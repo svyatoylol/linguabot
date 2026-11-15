@@ -133,6 +133,14 @@ namespace WebApplication1.Migrations
                     b.Property<DateTime?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Scenario")
                         .IsRequired()
                         .HasColumnType("text");
@@ -154,6 +162,197 @@ namespace WebApplication1.Migrations
                     b.ToTable("DialogueSessions");
                 });
 
+            modelBuilder.Entity("LinguaBot.Models.Exercise", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrectAnswer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DetectedErrorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Options")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DetectedErrorId");
+
+                    b.HasIndex("SessionId", "Order");
+
+                    b.ToTable("Exercises");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.ExerciseAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserAnswer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExerciseId", "AttemptedAt");
+
+                    b.ToTable("ExerciseAttempts");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PlacementTestQuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PlacementTestSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserAnswer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlacementTestQuestionId");
+
+                    b.HasIndex("PlacementTestSessionId", "AnsweredAt");
+
+                    b.ToTable("PlacementTestAnswers");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrectAnswer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Options")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PlacementTestSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Skill")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlacementTestSessionId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("PlacementTestQuestions");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CorrectAnswers")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LanguageProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResultLevel")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LanguageProfileId", "Status");
+
+                    b.HasIndex("UserId", "StartedAt");
+
+                    b.ToTable("PlacementTestSessions");
+                });
+
             modelBuilder.Entity("LinguaBot.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -168,6 +367,46 @@ namespace WebApplication1.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.UserLanguageProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrentLevel")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsPlacementCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSelected")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastTestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SelectedLevel")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "LanguageCode")
+                        .IsUnique();
+
+                    b.ToTable("UserLanguageProfiles");
                 });
 
             modelBuilder.Entity("LinguaBot.Models.UserSettings", b =>
@@ -243,6 +482,95 @@ namespace WebApplication1.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("LinguaBot.Models.Exercise", b =>
+                {
+                    b.HasOne("LinguaBot.Models.DetectedError", "DetectedError")
+                        .WithMany("Exercises")
+                        .HasForeignKey("DetectedErrorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("LinguaBot.Models.DialogueSession", "Session")
+                        .WithMany("Exercises")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DetectedError");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.ExerciseAttempt", b =>
+                {
+                    b.HasOne("LinguaBot.Models.Exercise", "Exercise")
+                        .WithMany("Attempts")
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestAnswer", b =>
+                {
+                    b.HasOne("LinguaBot.Models.PlacementTestQuestion", "PlacementTestQuestion")
+                        .WithMany("Answers")
+                        .HasForeignKey("PlacementTestQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LinguaBot.Models.PlacementTestSession", "PlacementTestSession")
+                        .WithMany("Answers")
+                        .HasForeignKey("PlacementTestSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlacementTestQuestion");
+
+                    b.Navigation("PlacementTestSession");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestQuestion", b =>
+                {
+                    b.HasOne("LinguaBot.Models.PlacementTestSession", "PlacementTestSession")
+                        .WithMany("Questions")
+                        .HasForeignKey("PlacementTestSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlacementTestSession");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestSession", b =>
+                {
+                    b.HasOne("LinguaBot.Models.UserLanguageProfile", "LanguageProfile")
+                        .WithMany("PlacementTests")
+                        .HasForeignKey("LanguageProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LinguaBot.Models.User", "User")
+                        .WithMany("PlacementTests")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LanguageProfile");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.UserLanguageProfile", b =>
+                {
+                    b.HasOne("LinguaBot.Models.User", "User")
+                        .WithMany("LanguageProfiles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LinguaBot.Models.UserSettings", b =>
                 {
                     b.HasOne("LinguaBot.Models.User", "User")
@@ -252,6 +580,11 @@ namespace WebApplication1.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.DetectedError", b =>
+                {
+                    b.Navigation("Exercises");
                 });
 
             modelBuilder.Entity("LinguaBot.Models.DialogueMessage", b =>
@@ -265,15 +598,43 @@ namespace WebApplication1.Migrations
 
                     b.Navigation("DetectedErrors");
 
+                    b.Navigation("Exercises");
+
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.Exercise", b =>
+                {
+                    b.Navigation("Attempts");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestQuestion", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.PlacementTestSession", b =>
+                {
+                    b.Navigation("Answers");
+
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("LinguaBot.Models.User", b =>
                 {
+                    b.Navigation("LanguageProfiles");
+
+                    b.Navigation("PlacementTests");
+
                     b.Navigation("Sessions");
 
                     b.Navigation("Settings")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("LinguaBot.Models.UserLanguageProfile", b =>
+                {
+                    b.Navigation("PlacementTests");
                 });
 #pragma warning restore 612, 618
         }

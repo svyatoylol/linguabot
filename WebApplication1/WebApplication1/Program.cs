@@ -1,11 +1,13 @@
-
+using LinguaBot.Endpoints;
 using Microsoft.AspNetCore.Routing;
 using LinguaBot.Data;
 using LinguaBot.Models;
 using LinguaBot.Services;
 using Microsoft.EntityFrameworkCore;
+using LinguaBot.Models.Exercises;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
@@ -13,9 +15,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     )
 );
 
+builder.Services.AddScoped<PlacementTestGeneratorService>();
 builder.Services.AddSingleton<ScenarioCatalog>();
 builder.Services.AddHttpClient<GeminiService>();
-
+builder.Services.AddScoped<ExerciseGeneratorService>();
 builder.Services.AddScoped<DialogueAnalysisService>();
 
 var app = builder.Build();
@@ -23,6 +26,7 @@ var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.MapPlacementTestEndpoints();
 // ==========================================
 // SCENARIOS
 // ==========================================
@@ -50,6 +54,7 @@ app.MapGet("/api/profile", async (
     {
         user = await db.Users
             .Include(u => u.Settings)
+            .Include(u => u.LanguageProfiles)
             .FirstOrDefaultAsync(u => u.Id == guestId);
     }
 
@@ -87,7 +92,156 @@ app.MapGet("/api/profile", async (
             user.Settings.NativeLanguage,
             user.Settings.LearningLanguage,
             user.Settings.Level
+        },
+
+        Languages = user.LanguageProfiles
+            .OrderBy(p => p.LanguageCode)
+            .Select(p => new
+            {
+                p.Id,
+                p.LanguageCode,
+                p.SelectedLevel,
+                p.CurrentLevel,
+                p.IsSelected,
+                p.IsPlacementCompleted,
+                p.LastTestedAt
+            })
+    });
+});
+
+app.MapPut("/api/profile/languages", async (
+    SaveLanguagesRequest request,
+    HttpContext context,
+    ApplicationDbContext db,
+    CancellationToken cancellationToken
+) =>
+{
+    const string cookieName = "linguabot_guest";
+
+    if (!context.Request.Cookies.TryGetValue(cookieName, out var value) ||
+        !Guid.TryParse(value, out var guestId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var user = await db.Users
+        .Include(u => u.Settings)
+        .Include(u => u.LanguageProfiles)
+        .FirstOrDefaultAsync(
+            u => u.Id == guestId,
+            cancellationToken
+        );
+
+    if (user == null)
+        return Results.Unauthorized();
+
+    if (request.Languages == null || request.Languages.Count == 0)
+    {
+        return Results.BadRequest(new
+        {
+            error = "Select at least one language."
+        });
+    }
+
+    var allowedLanguages = new[] { "ru", "en", "pl" };
+    var allowedLevels = new[] { "A1-A2", "B1-B2", "C1", "Unknown" };
+
+    var selections = request.Languages
+        .Select(x => new
+        {
+            LanguageCode = x.LanguageCode?.Trim().ToLowerInvariant(),
+            Level = x.Level?.Trim()
+        })
+        .ToList();
+
+    if (selections.Any(x =>
+        string.IsNullOrWhiteSpace(x.LanguageCode) ||
+        !allowedLanguages.Contains(x.LanguageCode)))
+    {
+        return Results.BadRequest(new
+        {
+            error = "Unsupported language. Allowed values: ru, en, pl."
+        });
+    }
+
+    if (selections.Any(x =>
+        string.IsNullOrWhiteSpace(x.Level) ||
+        !allowedLevels.Contains(x.Level)))
+    {
+        return Results.BadRequest(new
+        {
+            error = "Unsupported level. Allowed values: A1-A2, B1-B2, C1, Unknown."
+        });
+    }
+
+    if (selections
+        .GroupBy(x => x.LanguageCode)
+        .Any(group => group.Count() > 1))
+    {
+        return Results.BadRequest(new
+        {
+            error = "A language cannot be selected more than once."
+        });
+    }
+
+    // Сначала снимаем выбор со всех существующих языков.
+    foreach (var profile in user.LanguageProfiles)
+    {
+        profile.IsSelected = false;
+    }
+
+    // Создаём новые профили или обновляем существующие.
+    foreach (var selection in selections)
+    {
+        var profile = user.LanguageProfiles
+            .FirstOrDefault(p =>
+                p.LanguageCode == selection.LanguageCode);
+
+        if (profile == null)
+        {
+            profile = new UserLanguageProfile
+            {
+                UserId = user.Id,
+                LanguageCode = selection.LanguageCode!,
+                SelectedLevel = selection.Level!,
+                IsSelected = true
+            };
+
+            db.UserLanguageProfiles.Add(profile);
         }
+        else
+        {
+            profile.SelectedLevel = selection.Level!;
+            profile.IsSelected = true;
+        }
+    }
+
+    // Сохраняем совместимость со старой системой диалогов.
+    // Пока она использует только один язык.
+    var primaryLanguage = selections[0];
+
+    user.Settings.LearningLanguage = primaryLanguage.LanguageCode!;
+    user.Settings.Level = primaryLanguage.Level!;
+
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Ok(new
+    {
+        message = "Language profiles saved.",
+
+        Languages = user.LanguageProfiles
+            .Where(p => p.IsSelected)
+            .OrderBy(p => p.LanguageCode)
+            .Select(p => new
+            {
+                p.Id,
+                p.LanguageCode,
+                p.SelectedLevel,
+                p.CurrentLevel,
+                p.IsSelected,
+                p.IsPlacementCompleted,
+                p.LastTestedAt
+            })
     });
 });
 
@@ -738,6 +892,181 @@ app.MapGet("/api/debug/routes", (IEnumerable<EndpointDataSource> sources) =>
         });
 });
 
+app.MapGet(
+    "/api/dialogues/{sessionId:guid}/exercises",
+    async (
+        Guid sessionId,
+        HttpContext context,
+        ApplicationDbContext db,
+        ExerciseGeneratorService exerciseGenerator,
+        CancellationToken cancellationToken) =>
+    {
+        if (!context.Request.Cookies.TryGetValue(
+            "linguabot_guest",
+            out var userIdValue) ||
+            !Guid.TryParse(userIdValue, out var userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        var session = await db.DialogueSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                s => s.Id == sessionId && s.UserId == userId,
+                cancellationToken
+            );
+
+        if (session == null)
+            return Results.NotFound(new
+            {
+                message = "Dialogue session was not found."
+            });
+
+        if (session.Status != "Completed")
+            return Results.Conflict(new
+            {
+                message = "The dialogue must be completed first."
+            });
+
+        try
+        {
+            var exercises = await exerciseGenerator.GenerateAsync(
+                sessionId,
+                cancellationToken
+            );
+
+            return Results.Ok(exercises);
+        }
+        catch (HttpRequestException ex)
+        {
+            return Results.Problem(
+                title: "Exercise generation failed.",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status502BadGateway
+            );
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.Problem(
+                title: "Could not generate exercises.",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
+    }
+);
+
+app.MapPost(
+    "/api/dialogues/{sessionId:guid}/exercises/{exerciseId:guid}/attempts",
+    async (
+        Guid sessionId,
+        Guid exerciseId,
+        SubmitExerciseAttemptRequest request,
+        HttpContext context,
+        ApplicationDbContext db,
+        CancellationToken cancellationToken) =>
+    {
+        if (!context.Request.Cookies.TryGetValue(
+            "linguabot_guest",
+            out var userIdValue) ||
+            !Guid.TryParse(userIdValue, out var userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Answer))
+        {
+            return Results.BadRequest(new
+            {
+                message = "Answer cannot be empty."
+            });
+        }
+
+        if (request.Answer.Length > 1000)
+        {
+            return Results.BadRequest(new
+            {
+                message = "Answer is too long."
+            });
+        }
+
+        var exercise = await db.Exercises
+            .Include(e => e.Attempts)
+            .FirstOrDefaultAsync(
+                e =>
+                    e.Id == exerciseId &&
+                    e.SessionId == sessionId &&
+                    e.Session.UserId == userId &&
+                    e.Session.Status == "Completed",
+                cancellationToken
+            );
+
+        if (exercise == null)
+        {
+            return Results.NotFound(new
+            {
+                message = "Exercise was not found."
+            });
+        }
+
+        // Once the user has answered correctly,
+        // further attempts are unnecessary.
+        if (exercise.Attempts.Any(a => a.IsCorrect))
+        {
+            return Results.Conflict(new
+            {
+                message = "This exercise has already been completed."
+            });
+        }
+
+        string userAnswer = NormalizeAnswer(request.Answer);
+        string correctAnswer = NormalizeAnswer(exercise.CorrectAnswer);
+
+        bool isCorrect = string.Equals(
+            userAnswer,
+            correctAnswer,
+            StringComparison.OrdinalIgnoreCase
+        );
+
+        var attempt = new ExerciseAttempt
+        {
+            ExerciseId = exercise.Id,
+            UserAnswer = request.Answer.Trim(),
+            IsCorrect = isCorrect,
+            AttemptedAt = DateTime.UtcNow
+        };
+
+        db.ExerciseAttempts.Add(attempt);
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        int attemptsCount = exercise.Attempts.Count + 1;
+
+        return Results.Ok(new ExerciseAttemptResponse
+        {
+            Id = attempt.Id,
+            IsCorrect = isCorrect,
+            AttemptsCount = attemptsCount,
+            CanRetry = !isCorrect,
+            Feedback = isCorrect
+                ? exercise.Explanation
+                : "Ответ пока неверный. Попробуйте ещё раз.",
+            AttemptedAt = attempt.AttemptedAt
+        });
+    }
+);
+
+static string NormalizeAnswer(string value)
+{
+    return string.Join(
+        " ",
+        value.Split(
+            (char[]?)null,
+            StringSplitOptions.RemoveEmptyEntries
+        )
+    ).Trim();
+}
+
 app.Run();
 
 // ==========================================
@@ -752,3 +1081,14 @@ public record SendMessageRequest(
 );
 
 public record CreateDialogueRequest(string ScenarioId);
+
+public record SubmitExerciseAttemptRequest(string Answer);
+
+public record SaveLanguagesRequest(
+    List<LanguageSelectionRequest>? Languages
+);
+
+public record LanguageSelectionRequest(
+    string LanguageCode,
+    string Level
+);

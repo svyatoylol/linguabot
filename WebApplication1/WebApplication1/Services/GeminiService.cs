@@ -1,5 +1,4 @@
-﻿
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace LinguaBot.Services;
@@ -22,6 +21,7 @@ public class GeminiService
         CancellationToken cancellationToken = default)
     {
         string? apiKey = _configuration["Gemini:ApiKey"];
+
         string model = _configuration["Gemini:Model"]
             ?? "gemini-3.8-flash";
 
