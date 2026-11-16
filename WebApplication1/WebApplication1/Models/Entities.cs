@@ -1,8 +1,10 @@
-﻿
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace LinguaBot.Models;
 
-public class User
-{
+    public class User
+    {
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -16,10 +18,10 @@ public class User
 
     public ICollection<PlacementTestSession> PlacementTests { get; set; }
         = new List<PlacementTestSession>();
-}
+    }
 
 public class UserSettings
-{
+    {
     public Guid UserId { get; set; }
 
     // Язык интерфейса и объяснений по умолчанию.
@@ -28,7 +30,7 @@ public class UserSettings
     // Временные поля для совместимости со старой архитектурой.
     // В дальнейшем выбор языка будет выполняться через UserLanguageProfile.
     public string LearningLanguage { get; set; } = "en";
-    public string Level { get; set; } = "A1-A2";
+        public string Level { get; set; } = "A1-A2";
 
     public User User { get; set; } = null!;
 }
@@ -210,11 +212,11 @@ public class PlacementTestSession
 
     public ICollection<PlacementTestAnswer> Answers { get; set; }
         = new List<PlacementTestAnswer>();
-}
+    }
 
 // Вопрос, сохранённый в рамках конкретного тестирования.
 public class PlacementTestQuestion
-{
+    {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid PlacementTestSessionId { get; set; }
 
@@ -241,9 +243,9 @@ public class PlacementTestQuestion
 
     public ICollection<PlacementTestAnswer> Answers { get; set; }
         = new List<PlacementTestAnswer>();
-}
+    }
 
-// Попытка пользователя ответить на вопрос.
+// ������� ������������ �������� �� ������.
 public class PlacementTestAnswer
 {
     public Guid Id { get; set; } = Guid.NewGuid();
