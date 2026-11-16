@@ -10,7 +10,7 @@ using WebApplication1.Services.Chat;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. ╨С╨░╨╖╨░ ╨┤╨░╨╜╨╜╤Л╤Е PostgreSQL (ApplicationDbContext + ╨╝╨╕╨│╤А╨░╤Ж╨╕╨╕)
+// 1. База данных PostgreSQL (ApplicationDbContext + миграции)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -21,14 +21,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString)
 );
 
-// 2. ╨б╨╡╤А╨▓╨╕╤Б╤Л ╤В╨╡╤Б╤В╨╛╨▓, ╤Г╨┐╤А╨░╨╢╨╜╨╡╨╜╨╕╨╣, ╤Б╤Ж╨╡╨╜╨░╤А╨╕╨╡╨▓ ╨╕ ╨░╨╜╨░╨╗╨╕╨╖╨░ ╨┤╨╕╨░╨╗╨╛╨│╨╛╨▓
+// 2. Сервисы тестов, упражнений, сценариев и анализа диалогов
 builder.Services.AddScoped<PlacementTestGeneratorService>();
 builder.Services.AddSingleton<ScenarioCatalog>();
 builder.Services.AddHttpClient<GeminiService>();
 builder.Services.AddScoped<ExerciseGeneratorService>();
 builder.Services.AddScoped<DialogueAnalysisService>();
 
-// 3. ╨б╨╡╤А╨▓╨╕╤Б╤Л ╨│╨╛╨╗╨╛╤Б╨░ (Piper TTS / STT) ╨╕ ╤З╨░╤В╨░
+// 3. Сервисы голоса (Piper TTS / STT) и чата
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddVoiceServices();
@@ -36,7 +36,7 @@ builder.Services.AddChatServices(builder.Configuration);
 
 var app = builder.Build();
 
-// ╨Р╨▓╤В╨╛╨┐╤А╨╕╨╝╨╡╨╜╨╡╨╜╨╕╨╡ ╨╝╨╕╨│╤А╨░╤Ж╨╕╨╣ ╨С╨Ф ╨┐╤А╨╕ ╨╖╨░╨┐╤Г╤Б╨║╨╡
+// Автоприменение миграций БД при запуске
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -46,7 +46,7 @@ using (var scope = app.Services.CreateScope())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// ╨Я╨╛╨┤╨║╨╗╤О╤З╨╡╨╜╨╕╨╡ ╨╝╨╛╨┤╤Г╨╗╤М╨╜╤Л╤Е ╤Н╨╜╨┤╨┐╨╛╨╕╨╜╤В╨╛╨▓
+// Подключение модульных эндпоинтов
 app.MapPlacementTestEndpoints();
 app.MapVoiceEndpoints();
 app.MapChatEndpoints();
@@ -1047,7 +1047,7 @@ app.MapPost(
             CanRetry = !isCorrect,
             Feedback = isCorrect
                 ? exercise.Explanation
-                : "╨Ю╤В╨▓╨╡╤В ╨┐╨╛╨║╨░ ╨╜╨╡╨▓╨╡╤А╨╜╤Л╨╣. ╨Я╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨╡╤Й╤С ╤А╨░╨╖.",
+                : "Ответ пока неверный. Попробуйте ещё раз.",
             AttemptedAt = attempt.AttemptedAt
         });
     }
