@@ -1,10 +1,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using LinguaBot.Data;
+using LinguaBot.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using WebApplication1.Data;
 using WebApplication1.Models;
 
 namespace WebApplication1.Services.Chat
@@ -15,7 +16,7 @@ namespace WebApplication1.Services.Chat
     public class ChatService : IChatService
     {
         private readonly IConversationContextService _contextService;
-        private readonly AppDbContext _db;
+        private readonly ApplicationDbContext _db;
         private readonly HttpClient _httpClient;
         private readonly GeminiOptions _options;
         private readonly IWebHostEnvironment _env;
@@ -23,7 +24,7 @@ namespace WebApplication1.Services.Chat
 
         public ChatService(
             IConversationContextService contextService,
-            AppDbContext db,
+            ApplicationDbContext db,
             HttpClient httpClient,
             IOptions<GeminiOptions> options,
             IWebHostEnvironment env,
@@ -57,10 +58,10 @@ namespace WebApplication1.Services.Chat
             }
 
             // 1. Проверка сессии при передаче SessionId
-            DialogSession? session = null;
+            DialogueSession? session = null;
             if (request.SessionId.HasValue)
             {
-                session = await _db.DialogSessions.FindAsync(new object[] { request.SessionId.Value }, cancellationToken);
+                session = await _db.DialogueSessions.FindAsync(new object[] { request.SessionId.Value }, cancellationToken);
                 if (session == null)
                 {
                     return new ChatExecutionResult(false, null, 404, $"Сессия с ID {request.SessionId.Value} не найдена.");
@@ -129,18 +130,18 @@ namespace WebApplication1.Services.Chat
                 // 5. Сохранение сообщений в PostgreSQL при наличии активной сессии
                 if (request.SessionId.HasValue)
                 {
-                    _db.DialogMessages.Add(new DialogMessage
+                    _db.DialogueMessages.Add(new DialogueMessage
                     {
-                        DialogSessionId = request.SessionId.Value,
-                        Sender = "User",
-                        ContentText = request.Message
+                        SessionId = request.SessionId.Value,
+                        Role = "user",
+                        Content = request.Message
                     });
 
-                    _db.DialogMessages.Add(new DialogMessage
+                    _db.DialogueMessages.Add(new DialogueMessage
                     {
-                        DialogSessionId = request.SessionId.Value,
-                        Sender = "Bot",
-                        ContentText = aiText
+                        SessionId = request.SessionId.Value,
+                        Role = "assistant",
+                        Content = aiText
                     });
 
                     await _db.SaveChangesAsync(cancellationToken);

@@ -1,33 +1,57 @@
-<<<<<<< HEAD
-using LinguaBot.Endpoints;
-using Microsoft.AspNetCore.Routing;
 using LinguaBot.Data;
+using LinguaBot.Endpoints;
 using LinguaBot.Models;
-using LinguaBot.Services;
-using Microsoft.EntityFrameworkCore;
 using LinguaBot.Models.Exercises;
+using LinguaBot.Services;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using VoiceService;
+using WebApplication1.Services.Chat;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 1. База данных PostgreSQL (ApplicationDbContext + миграции)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = "Host=localhost;Port=5432;Database=linguabot_db;Username=postgres;Password=postgre";
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    )
+    options.UseNpgsql(connectionString)
 );
 
+// 2. Сервисы тестов, упражнений, сценариев и анализа диалогов
 builder.Services.AddScoped<PlacementTestGeneratorService>();
 builder.Services.AddSingleton<ScenarioCatalog>();
 builder.Services.AddHttpClient<GeminiService>();
 builder.Services.AddScoped<ExerciseGeneratorService>();
 builder.Services.AddScoped<DialogueAnalysisService>();
 
+// 3. Сервисы голоса (Piper TTS / STT) и чата
+builder.Services.AddHttpClient();
+builder.Services.AddControllers();
+builder.Services.AddVoiceServices();
+builder.Services.AddChatServices(builder.Configuration);
+
 var app = builder.Build();
+
+// Автоприменение миграций БД при запуске
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Подключение модульных эндпоинтов
 app.MapPlacementTestEndpoints();
+app.MapVoiceEndpoints();
+app.MapChatEndpoints();
+app.MapControllers();
+
 // ==========================================
 // SCENARIOS
 // ==========================================
@@ -185,13 +209,11 @@ app.MapPut("/api/profile/languages", async (
         });
     }
 
-    // Сначала снимаем выбор со всех существующих языков.
     foreach (var profile in user.LanguageProfiles)
     {
         profile.IsSelected = false;
     }
 
-    // Создаём новые профили или обновляем существующие.
     foreach (var selection in selections)
     {
         var profile = user.LanguageProfiles
@@ -217,8 +239,6 @@ app.MapPut("/api/profile/languages", async (
         }
     }
 
-    // Сохраняем совместимость со старой системой диалогов.
-    // Пока она использует только один язык.
     var primaryLanguage = selections[0];
 
     user.Settings.LearningLanguage = primaryLanguage.LanguageCode!;
@@ -405,6 +425,7 @@ app.MapGet("/api/dialogues/{sessionId:guid}", async (
             })
     });
 });
+
 // ==========================================
 // FINISH DIALOGUE / GENERATE ANALYSIS
 // ==========================================
@@ -419,14 +440,12 @@ app.MapPost("/api/dialogues/{sessionId:guid}/finish", async (
 {
     const string cookieName = "linguabot_guest";
 
-    // Проверяем гостевой профиль.
     if (!context.Request.Cookies.TryGetValue(cookieName, out var value) ||
         !Guid.TryParse(value, out var guestId))
     {
         return Results.Unauthorized();
     }
 
-    // Проверяем владельца диалога.
     var session = await db.DialogueSessions
         .FirstOrDefaultAsync(
             s => s.Id == sessionId && s.UserId == guestId,
@@ -436,14 +455,12 @@ app.MapPost("/api/dialogues/{sessionId:guid}/finish", async (
     if (session == null)
         return Results.NotFound();
 
-    // Проверяем, существует ли уже анализ.
     bool analysisExists = await db.DialogueAnalyses
         .AnyAsync(
             a => a.SessionId == sessionId,
             cancellationToken
         );
 
-    // Нельзя завершить уже закрытый диалог без готового анализа.
     if (session.Status != "Active" && !analysisExists)
     {
         return Results.BadRequest(new
@@ -452,7 +469,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/finish", async (
         });
     }
 
-    // Проверяем наличие сообщений пользователя.
     if (!analysisExists)
     {
         bool hasUserMessages = await db.DialogueMessages
@@ -472,13 +488,11 @@ app.MapPost("/api/dialogues/{sessionId:guid}/finish", async (
 
     try
     {
-        // Генерируем или получаем существующий анализ.
         var analysis = await analysisService.AnalyzeAsync(
             sessionId,
             cancellationToken
         );
 
-        // Завершаем диалог только после успешного анализа.
         if (session.Status == "Active")
         {
             session.Status = "Completed";
@@ -487,7 +501,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/finish", async (
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        // Получаем обнаруженные ошибки.
         var errors = await db.DetectedErrors
             .AsNoTracking()
             .Where(e => e.SessionId == sessionId)
@@ -553,14 +566,12 @@ app.MapGet("/api/dialogues/{sessionId:guid}/analysis", async (
 {
     const string cookieName = "linguabot_guest";
 
-    // Проверяем гостевой профиль.
     if (!context.Request.Cookies.TryGetValue(cookieName, out var value) ||
         !Guid.TryParse(value, out var guestId))
     {
         return Results.Unauthorized();
     }
 
-    // Проверяем владельца диалога.
     var sessionExists = await db.DialogueSessions
         .AnyAsync(
             s => s.Id == sessionId && s.UserId == guestId,
@@ -570,7 +581,6 @@ app.MapGet("/api/dialogues/{sessionId:guid}/analysis", async (
     if (!sessionExists)
         return Results.NotFound();
 
-    // Получаем анализ.
     var analysis = await db.DialogueAnalyses
         .AsNoTracking()
         .FirstOrDefaultAsync(
@@ -586,7 +596,6 @@ app.MapGet("/api/dialogues/{sessionId:guid}/analysis", async (
         });
     }
 
-    // Получаем ошибки.
     var errors = await db.DetectedErrors
         .AsNoTracking()
         .Where(e => e.SessionId == sessionId)
@@ -632,7 +641,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
 {
     const string cookieName = "linguabot_guest";
 
-    // Проверяем гостевой профиль.
     if (!context.Request.Cookies.TryGetValue(cookieName, out var value) ||
         !Guid.TryParse(value, out var guestId))
     {
@@ -646,7 +654,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
     if (user == null)
         return Results.Unauthorized();
 
-    // Проверяем содержимое сообщения.
     if (string.IsNullOrWhiteSpace(request.Content))
     {
         return Results.BadRequest(new
@@ -663,7 +670,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
         });
     }
 
-    // Получаем диалог пользователя.
     var session = await db.DialogueSessions
         .FirstOrDefaultAsync(
             s => s.Id == sessionId && s.UserId == user.Id,
@@ -681,7 +687,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
         });
     }
 
-    // Проверяем сообщение, на которое отвечает пользователь.
     DialogueMessage? repliedMessage = null;
 
     if (request.ReplyToMessageId.HasValue)
@@ -702,7 +707,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
         }
     }
 
-    // Получаем сценарий.
     var scenario = catalog.GetById(session.Scenario);
 
     if (scenario == null)
@@ -713,7 +717,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
         );
     }
 
-    // Сохраняем сообщение пользователя.
     var userMessage = new DialogueMessage
     {
         SessionId = session.Id,
@@ -726,7 +729,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
 
     await db.SaveChangesAsync(cancellationToken);
 
-    // Получаем последние 20 сообщений.
     var history = await db.DialogueMessages
         .Where(m => m.SessionId == session.Id)
         .OrderByDescending(m => m.CreatedAt)
@@ -735,7 +737,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
 
     history.Reverse();
 
-    // Формируем контекст для Gemini.
     var prompt = new System.Text.StringBuilder();
 
     prompt.AppendLine("You are LinguaBot, a language learning assistant.");
@@ -781,7 +782,6 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
         "Usually conduct 2-3 user turns in guest mode."
     );
 
-    // Дополнительный контекст ответа.
     if (repliedMessage != null)
     {
         string repliedRole = repliedMessage.Role == "user"
@@ -814,13 +814,11 @@ app.MapPost("/api/dialogues/{sessionId:guid}/messages", async (
 
     try
     {
-        // Генерируем ответ Gemini.
         string answer = await gemini.GenerateResponseAsync(
             prompt.ToString(),
             cancellationToken
         );
 
-        // Сохраняем ответ Gemini.
         var assistantMessage = new DialogueMessage
         {
             SessionId = session.Id,
@@ -1010,8 +1008,6 @@ app.MapPost(
             });
         }
 
-        // Once the user has answered correctly,
-        // further attempts are unnecessary.
         if (exercise.Attempts.Any(a => a.IsCorrect))
         {
             return Results.Conflict(new
@@ -1057,6 +1053,8 @@ app.MapPost(
     }
 );
 
+app.Run();
+
 static string NormalizeAnswer(string value)
 {
     return string.Join(
@@ -1067,8 +1065,6 @@ static string NormalizeAnswer(string value)
         )
     ).Trim();
 }
-
-app.Run();
 
 // ==========================================
 // REQUEST MODELS
@@ -1093,50 +1089,3 @@ public record LanguageSelectionRequest(
     string LanguageCode,
     string Level
 );
-=======
-using Microsoft.EntityFrameworkCore;
-using VoiceService;
-using WebApplication1.Data;
-using WebApplication1.Services.Chat;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// 1. Подключаем базовые сервисы
-builder.Services.AddHttpClient();
-builder.Services.AddControllers();
-
-// 2. Сервисы распознавания речи (Groq Whisper STT)
-builder.Services.AddVoiceServices();
-
-// 3. Сервисы диалога и контекста ИИ (Gemini)
-builder.Services.AddChatServices(builder.Configuration);
-
-// 4. Подключение к БД
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    // Локальный фоллбэк для тестовой БД (Docker PostgreSQL)
-    connectionString = "Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=postgres";
-}
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
-var app = builder.Build();
-
-// Автопроверка таблиц при старте
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-}
-
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
-// Эндпоинты
-app.MapChatEndpoints();
-app.MapVoiceEndpoints();
-
-app.MapControllers();
-app.Run();
->>>>>>> 6f71d331aa6fa1831b3be43a64d8ffc73a9134f3

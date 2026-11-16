@@ -29,7 +29,7 @@ namespace VoiceService
         Task<VoiceOrchestrationResult> ProcessVoiceAsync(
             Stream audioStream,
             string fileName = "speech.webm",
-            int? sessionId = null,
+            Guid? sessionId = null,
             string? scenario = null,
             string? language = null,
             string? level = null,
@@ -63,7 +63,7 @@ namespace VoiceService
         public async Task<VoiceOrchestrationResult> ProcessVoiceAsync(
             Stream audioStream,
             string fileName = "speech.webm",
-            int? sessionId = null,
+            Guid? sessionId = null,
             string? scenario = null,
             string? language = null,
             string? level = null,

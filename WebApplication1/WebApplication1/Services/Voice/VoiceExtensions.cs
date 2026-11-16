@@ -183,7 +183,7 @@ namespace VoiceService
                     return Results.BadRequest(new { error = "Аудиофайл не передан или пуст." });
                 }
 
-                int? sessionId = null;
+                Guid? sessionId = null;
                 string? scenario = null;
                 string? lang = null;
                 string? level = null;
@@ -191,7 +191,7 @@ namespace VoiceService
                 if (context.Request.HasFormContentType)
                 {
                     var form = context.Request.Form;
-                    if (form.TryGetValue("sessionId", out var sIdStr) && int.TryParse(sIdStr, out var sId))
+                    if (form.TryGetValue("sessionId", out var sIdStr) && Guid.TryParse(sIdStr, out var sId))
                     {
                         sessionId = sId;
                     }

@@ -1,5 +1,6 @@
+using LinguaBot.Data;
+using LinguaBot.Models;
 using Microsoft.EntityFrameworkCore;
-using WebApplication1.Data;
 using WebApplication1.Models;
 
 namespace WebApplication1.Services.Chat
@@ -32,10 +33,10 @@ namespace WebApplication1.Services.Chat
                 "A1", "A2", "A1-A2", "B1", "B2", "C1", "C2"
             };
 
-        public ContextValidationResult ValidateContextParameters(ChatRequest request, DialogSession? session)
+        public ContextValidationResult ValidateContextParameters(ChatRequest request, DialogueSession? session)
         {
             // 1. Валидация языка
-            var rawLang = !string.IsNullOrWhiteSpace(request.Lang) ? request.Lang : (session?.Lang ?? "en");
+            var rawLang = !string.IsNullOrWhiteSpace(request.Lang) ? request.Lang : (session?.LanguageCode ?? "en");
             if (!SupportedLanguages.TryGetValue(rawLang.Trim(), out var langInfo))
             {
                 return new ContextValidationResult(
@@ -44,7 +45,7 @@ namespace WebApplication1.Services.Chat
             }
 
             // 2. Валидация сценария
-            var rawScenario = !string.IsNullOrWhiteSpace(request.Scenario) ? request.Scenario : (session?.ScenarioCode ?? "cafe");
+            var rawScenario = !string.IsNullOrWhiteSpace(request.Scenario) ? request.Scenario : (session?.Scenario ?? "cafe");
             var scenario = rawScenario.Trim().ToLowerInvariant();
             if (!SupportedScenarios.Contains(scenario))
             {
@@ -80,8 +81,8 @@ namespace WebApplication1.Services.Chat
         }
 
         public async Task<object> BuildGeminiPayloadAsync(
-            AppDbContext db,
-            int? sessionId,
+            ApplicationDbContext db,
+            Guid? sessionId,
             string userMessage,
             string systemPrompt,
             CancellationToken cancellationToken = default)
@@ -90,20 +91,20 @@ namespace WebApplication1.Services.Chat
 
             if (sessionId.HasValue)
             {
-                var history = await db.DialogMessages
-                    .Where(m => m.DialogSessionId == sessionId.Value)
-                    .OrderByDescending(m => m.Id)
+                var history = await db.DialogueMessages
+                    .Where(m => m.SessionId == sessionId.Value)
+                    .OrderByDescending(m => m.CreatedAt)
                     .Take(10)
-                    .OrderBy(m => m.Id)
+                    .OrderBy(m => m.CreatedAt)
                     .ToListAsync(cancellationToken);
 
                 foreach (var msg in history)
                 {
-                    var role = msg.Sender.Equals("Bot", StringComparison.OrdinalIgnoreCase) ? "model" : "user";
+                    var role = msg.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) ? "model" : "user";
                     contents.Add(new
                     {
                         role = role,
-                        parts = new[] { new { text = msg.ContentText } }
+                        parts = new[] { new { text = msg.Content } }
                     });
                 }
             }

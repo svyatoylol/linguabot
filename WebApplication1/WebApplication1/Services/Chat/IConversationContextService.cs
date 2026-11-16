@@ -1,8 +1,13 @@
-using WebApplication1.Data;
+using LinguaBot.Data;
+using LinguaBot.Models;
 using WebApplication1.Models;
 
 namespace WebApplication1.Services.Chat
 {
+    /// <summary>
+    /// Вариант подключения контекста: сопоставление языковых кодов и названий,
+    /// а также построение запроса к Gemini.
+    /// </summary>
     public record ContextValidationResult(
         bool IsValid,
         string? ErrorMessage = null,
@@ -22,7 +27,7 @@ namespace WebApplication1.Services.Chat
         /// </summary>
         ContextValidationResult ValidateContextParameters(
             ChatRequest request,
-            DialogSession? session);
+            DialogueSession? session);
 
         /// <summary>
         /// Формирует системную инструкцию (роль персонажа, правила исправления ошибок).
@@ -37,8 +42,8 @@ namespace WebApplication1.Services.Chat
         /// Загружает историю последних сообщений из БД и формирует тело запроса к Gemini (contents + systemInstruction).
         /// </summary>
         Task<object> BuildGeminiPayloadAsync(
-            AppDbContext db,
-            int? sessionId,
+            ApplicationDbContext db,
+            Guid? sessionId,
             string userMessage,
             string systemPrompt,
             CancellationToken cancellationToken = default);
