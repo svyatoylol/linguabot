@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using LinguaBot.Endpoints;
 using Microsoft.AspNetCore.Routing;
 using LinguaBot.Data;
@@ -1092,3 +1093,50 @@ public record LanguageSelectionRequest(
     string LanguageCode,
     string Level
 );
+=======
+using Microsoft.EntityFrameworkCore;
+using VoiceService;
+using WebApplication1.Data;
+using WebApplication1.Services.Chat;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Подключаем базовые сервисы
+builder.Services.AddHttpClient();
+builder.Services.AddControllers();
+
+// 2. Сервисы распознавания речи (Groq Whisper STT)
+builder.Services.AddVoiceServices();
+
+// 3. Сервисы диалога и контекста ИИ (Gemini)
+builder.Services.AddChatServices(builder.Configuration);
+
+// 4. Подключение к БД
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    // Локальный фоллбэк для тестовой БД (Docker PostgreSQL)
+    connectionString = "Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=postgres";
+}
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+var app = builder.Build();
+
+// Автопроверка таблиц при старте
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// Эндпоинты
+app.MapChatEndpoints();
+app.MapVoiceEndpoints();
+
+app.MapControllers();
+app.Run();
+>>>>>>> 6f71d331aa6fa1831b3be43a64d8ffc73a9134f3
