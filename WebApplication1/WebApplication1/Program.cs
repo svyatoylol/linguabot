@@ -1,4 +1,4 @@
-using LinguaBot.Data;
+﻿using LinguaBot.Data;
 using LinguaBot.Endpoints;
 using LinguaBot.Models;
 using LinguaBot.Models.Exercises;
@@ -10,7 +10,7 @@ using WebApplication1.Services.Chat;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. База данных PostgreSQL (ApplicationDbContext + миграции)
+// 1. ╨С╨░╨╖╨░ ╨┤╨░╨╜╨╜╤Л╤Е PostgreSQL (ApplicationDbContext + ╨╝╨╕╨│╤А╨░╤Ж╨╕╨╕)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -21,14 +21,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString)
 );
 
-// 2. Сервисы тестов, упражнений, сценариев и анализа диалогов
+// 2. ╨б╨╡╤А╨▓╨╕╤Б╤Л ╤В╨╡╤Б╤В╨╛╨▓, ╤Г╨┐╤А╨░╨╢╨╜╨╡╨╜╨╕╨╣, ╤Б╤Ж╨╡╨╜╨░╤А╨╕╨╡╨▓ ╨╕ ╨░╨╜╨░╨╗╨╕╨╖╨░ ╨┤╨╕╨░╨╗╨╛╨│╨╛╨▓
 builder.Services.AddScoped<PlacementTestGeneratorService>();
 builder.Services.AddSingleton<ScenarioCatalog>();
 builder.Services.AddHttpClient<GeminiService>();
 builder.Services.AddScoped<ExerciseGeneratorService>();
 builder.Services.AddScoped<DialogueAnalysisService>();
 
-// 3. Сервисы голоса (Piper TTS / STT) и чата
+// 3. ╨б╨╡╤А╨▓╨╕╤Б╤Л ╨│╨╛╨╗╨╛╤Б╨░ (Piper TTS / STT) ╨╕ ╤З╨░╤В╨░
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddVoiceServices();
@@ -36,7 +36,7 @@ builder.Services.AddChatServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Автоприменение миграций БД при запуске
+// ╨Р╨▓╤В╨╛╨┐╤А╨╕╨╝╨╡╨╜╨╡╨╜╨╕╨╡ ╨╝╨╕╨│╤А╨░╤Ж╨╕╨╣ ╨С╨Ф ╨┐╤А╨╕ ╨╖╨░╨┐╤Г╤Б╨║╨╡
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -46,7 +46,7 @@ using (var scope = app.Services.CreateScope())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// Подключение модульных эндпоинтов
+// ╨Я╨╛╨┤╨║╨╗╤О╤З╨╡╨╜╨╕╨╡ ╨╝╨╛╨┤╤Г╨╗╤М╨╜╤Л╤Е ╤Н╨╜╨┤╨┐╨╛╨╕╨╜╤В╨╛╨▓
 app.MapPlacementTestEndpoints();
 app.MapVoiceEndpoints();
 app.MapChatEndpoints();
@@ -1047,7 +1047,7 @@ app.MapPost(
             CanRetry = !isCorrect,
             Feedback = isCorrect
                 ? exercise.Explanation
-                : "Ответ пока неверный. Попробуйте ещё раз.",
+                : "╨Ю╤В╨▓╨╡╤В ╨┐╨╛╨║╨░ ╨╜╨╡╨▓╨╡╤А╨╜╤Л╨╣. ╨Я╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨╡╤Й╤С ╤А╨░╨╖.",
             AttemptedAt = attempt.AttemptedAt
         });
     }
