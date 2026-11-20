@@ -1,340 +1,796 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Свинки AI Чат</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 90vh;
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#4d76f6">
+  <meta name="description" content="LinguaBot — интеллектуальный ИИ-тренер для изучения иностранных языков через диалоги и адаптивную практику.">
+  <title>LinguaBot — ИИ-тренер иностранных языков</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=10">
+  <script>
+    (function() {
+      try {
+        var s = localStorage.getItem('linguabot_theme') || 'system';
+        var t = s;
+        if (s === 'system') {
+          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
         }
-
-        .chat-container {
-            width: 100%;
-            max-width: 600px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            height: 500px;
-            overflow: hidden;
-        }
-
-        .chat-header {
-            background: #007acc;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .messages-area {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background: #f9f9f9;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .message {
-            max-width: 75%;
-            padding: 10px 14px;
-            border-radius: 15px;
-            font-size: 0.95em;
-            line-height: 1.4;
-        }
-
-        .user-msg {
-            background: #4caf50;
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 0;
-        }
-
-        .ai-msg {
-            background: #007acc;
-            color: white;
-            align-self: flex-start;
-            border-bottom-left-radius: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .speak-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.1em;
-            padding: 2px 6px;
-            border-radius: 4px;
-            opacity: 0.85;
-            color: white;
-            transition: all 0.2s;
-            flex-shrink: 0;
-        }
-
-        .speak-btn:hover {
-            opacity: 1;
-            background: rgba(255, 255, 255, 0.25);
-            transform: scale(1.1);
-        }
-
-        .loading-msg {
-            color: #888;
-            font-style: italic;
-            align-self: flex-start;
-            padding-left: 5px;
-        }
-
-        .input-area {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid #eee;
-            background: white;
-            gap: 10px;
-        }
-
-            .input-area input {
-                flex: 1;
-                padding: 10px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                outline: none;
-            }
-
-            .input-area button {
-                padding: 10px 20px;
-                background: #007acc;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-weight: bold;
-            }
-
-                .input-area button:hover {
-                    background: #005999;
-                }
-
-                .input-area button.voice-btn {
-                    padding: 10px 15px;
-                    background: #5c6bc0;
-                    font-size: 1.1em;
-                }
-
-                .input-area button.voice-btn:hover {
-                    background: #3f51b5;
-                }
-
-                .input-area button.recording {
-                    background: #e53935 !important;
-                    animation: pulse 1s infinite alternate;
-                }
-
-        @keyframes pulse {
-            from { transform: scale(1); opacity: 1; }
-            to { transform: scale(1.08); opacity: 0.7; }
-        }
-    </style>
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
+  <div class="app-shell">
+    <!-- Global top bar: menu / centered logo / status / profile -->
+    <header class="topbar">
+      <button class="icon-button menu-toggle" id="menu-toggle" type="button" aria-label="Открыть навигацию" aria-expanded="false" aria-controls="main-nav">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <a class="brand" href="#today" data-page="today" aria-label="LinguaBot — главная">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>Lingua<span class="brand-accent">Bot</span></span>
+      </a>
+      <div class="topbar-actions">
+        <button class="icon-button theme-toggle" id="theme-toggle" type="button" aria-label="Сменить тему оформления" title="Светлая / Тёмная тема">
+          <svg class="theme-icon-sun" id="theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon-moon" id="theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <span class="connection-status" id="connection-status"><i id="conn-dot"></i> <span id="conn-text">Онлайн</span></span>
+        <button class="avatar-button" id="open-auth" type="button" aria-label="Открыть профиль или войти"><span id="topbar-avatar">Г</span></button>
+      </div>
+    </header>
 
-    <div class="chat-container">
-        <div class="chat-header">Свинки AI Чат (.NET Core)</div>
-        <div class="messages-area" id="messagesArea">
-            <div class="message ai-msg">Привет! Архитектура приложения настроена. Напиши мне что-нибудь или используй микрофон, чтобы протестировать бэкенд!</div>
+    <!-- Main Navigation Menu -->
+    <nav class="main-nav" id="main-nav" aria-label="Главная навигация" hidden>
+      <div class="nav-caption">НАВИГАЦИЯ</div>
+      <button class="nav-link active" data-page="today" type="button"><span class="nav-icon">⌂</span> Сегодня</button>
+      <button class="nav-link" data-page="catalog" type="button"><span class="nav-icon">▤</span> Диалоги (10)</button>
+      <button class="nav-link" data-page="chat" type="button"><span class="nav-icon">💬</span> Чат-тренажёр</button>
+      <button class="nav-link" data-page="practice" type="button"><span class="nav-icon">✍</span> Практика</button>
+      <button class="nav-link" data-page="dictionary" type="button"><span class="nav-icon">📖</span> Словарь (SRS)</button>
+      <button class="nav-link" data-page="progress" type="button"><span class="nav-icon">📈</span> Прогресс</button>
+      <button class="nav-link" data-page="profile" type="button"><span class="nav-icon">◉</span> Профиль</button>
+      <button class="nav-link" id="nav-theme-toggle" type="button"><span class="nav-icon" id="nav-theme-icon">🌙</span> <span id="nav-theme-label">Тёмная тема</span></button>
+      <div class="nav-footnote">Ваш темп — регулярная практика без стресса</div>
+    </nav>
+
+    <main>
+      <!-- ======================================================== -->
+      <!-- PAGE 1: СЕГОДНЯ (DAILY DASHBOARD & QUICK ONBOARDING)    -->
+      <!-- ======================================================== -->
+      <section class="page active" id="page-today" aria-labelledby="today-title">
+        <div class="onboarding-grid">
+          <div class="intro-column">
+            <div class="eyebrow"><span class="eyebrow-dot"></span> ИНТЕЛЛЕКТУАЛЬНЫЙ ЯЗЫКОВОЙ АССИСТЕНТ</div>
+            <h1 id="today-title">Практикуйте язык<br><span>без страха ошибки</span></h1>
+            <p class="intro-copy">Говорите с чутким ИИ-собеседником на реальные темы. Система не перебивает, подробно объясняет правила после разговора и тренирует спонтанную речь без заготовок.</p>
+            
+            <div class="intro-actions">
+              <button class="button button-primary button-large" id="start-guest" type="button">Начать диалог без регистрации <span aria-hidden="true">→</span></button>
+              <button class="button button-outline" id="resume-daily-dialogue" type="button">Продолжить занятие</button>
+              <button class="button button-outline" id="btn-open-placement-test" type="button" title="12 вопросов CEFR по грамматике и лексике">📊 Полный тест (12 вопросов)</button>
+            </div>
+
+            <!-- Daily checklist 4 steps -->
+            <div class="daily-checklist-card panel">
+              <div class="daily-header">
+                <div>
+                  <span class="section-kicker">ПЛАН ДНЯ (5–15 МИНУТ)</span>
+                  <h3>Шаги сегодняшнего прогресса</h3>
+                </div>
+                <div class="daily-goal-pill" id="daily-goal-pill">15 / 20 мин</div>
+              </div>
+              <div class="daily-steps-list" id="daily-steps-list">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Personalized recommendation card -->
+            <div class="recommendation-card panel" id="recommendation-box">
+              <div class="rec-icon">💡</div>
+              <div class="rec-content">
+                <span class="section-kicker">РЕКОМЕНДУЕМ ПОВТОРИТЬ</span>
+                <h4 id="rec-topic">Present Perfect vs Past Simple</h4>
+                <p id="rec-desc">В последних диалогах вы путали времена при описании личного опыта. Пройдите короткую практику.</p>
+              </div>
+              <div class="rec-actions">
+                <button class="button button-primary" id="rec-action-btn" type="button">Повторить</button>
+                <button class="button button-quiet small" id="rec-replace-btn" type="button">Заменить</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Placement Assessment card -->
+          <section class="assessment-card" aria-labelledby="assessment-title">
+            <div class="card-heading-row">
+              <div>
+                <span class="section-kicker">БЫСТРЫЙ СТАРТ</span>
+                <h2 id="assessment-title">Определим ваш уровень</h2>
+                <p class="muted small">Ответьте на 3 вопроса, чтобы ИИ-тренер адаптировал лексику и темп речи под вас.</p>
+              </div>
+              <span class="time-pill">≈ 2 мин</span>
+            </div>
+
+            <form id="assessment-form" novalidate>
+              <div class="assessment-settings">
+                <label class="field-label" for="onboarding-language">Изучаемый язык</label>
+                <select id="onboarding-language" name="targetLanguage">
+                  <option value="en" selected>English · Английский</option>
+                  <option value="pl">Polski · Польский</option>
+                  <option value="es">Español · Испанский</option>
+                  <option value="ru">Русский</option>
+                </select>
+                <label class="field-label" for="onboarding-goal">Цель обучения</label>
+                <select id="onboarding-goal" name="goal">
+                  <option value="travel" selected>Путешествия</option>
+                  <option value="work">Работа и карьера</option>
+                  <option value="study">Учёба и экзамены</option>
+                </select>
+              </div>
+
+              <div class="assessment-progress-row">
+                <span id="assessment-step-label">Вопрос 1 из 3</span>
+                <span id="assessment-percent">33%</span>
+              </div>
+              <div class="progress-track"><span id="assessment-progress" style="width:33%"></span></div>
+
+              <div id="assessment-question" class="question-area">
+                <!-- Dynamically rendered -->
+              </div>
+
+              <div class="assessment-footer">
+                <button class="button button-quiet" id="skip-assessment" type="button">Пройти позже</button>
+                <button class="button button-primary" id="next-assessment" type="button">Ответить <span>→</span></button>
+              </div>
+              <p class="form-message" id="assessment-message" role="status" aria-live="polite"></p>
+            </form>
+            <div class="assessment-footnote"><span>♧</span> Можно начать без регистрации. Уровень можно изменить в профиле в любой момент.</div>
+          </section>
         </div>
-        <div class="input-area">
-            <input type="text" id="userInput" placeholder="Введите сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
-            <button id="voiceBtn" class="voice-btn" type="button" onclick="toggleVoiceRecording()" title="Голосовой ввод">🎤</button>
-            <button onclick="sendMessage()">Отправить</button>
+
+        <div class="benefit-strip">
+          <div><span class="benefit-icon icon-blue">✦</span><span><b>Живые диалоги</b><small>10 прикладных сценариев для жизни и работы</small></span></div>
+          <div><span class="benefit-icon icon-violet">◎</span><span><b>Мягкая обратная связь</b><small>Бот не перебивает, разбор до 3 ошибок</small></span></div>
+          <div><span class="benefit-icon icon-mint">↗</span><span><b>Режим «Без заготовки»</b><small>Тренировка спонтанной речи своими словами</small></span></div>
         </div>
-    </div>
+      </section>
 
-    <script>
-        let mediaRecorder = null;
-        let audioChunks = [];
+      <!-- ======================================================== -->
+      <!-- PAGE 2: КАТАЛОГ ДИАЛОГОВ (10 SCENARIOS)                  -->
+      <!-- ======================================================== -->
+      <section class="page" id="page-catalog" aria-labelledby="catalog-title">
+        <div class="page-heading">
+          <div>
+            <span class="section-kicker">ВЫБЕРИТЕ СИТУАЦИЮ</span>
+            <h1 id="catalog-title">Каталог диалогов</h1>
+            <p class="muted">10 жизненных сценариев: от заказа кофе до деловой встречи и собеседования.</p>
+          </div>
+          <div class="catalog-heading-actions">
+            <select class="catalog-lang-select" id="catalog-language-select" aria-label="Изучаемый язык">
+              <option value="en">🇬🇧 English · Английский</option>
+              <option value="pl">🇵🇱 Polski · Польский</option>
+              <option value="es">🇪🇸 Español · Испанский</option>
+              <option value="ru">🇷🇺 Русский</option>
+            </select>
+            <span class="level-chip" id="catalog-level">Уровень: A1–A2</span>
+            <button class="button button-primary" id="catalog-guest-start" type="button">Быстрый старт</button>
+          </div>
+        </div>
 
-        async function toggleVoiceRecording() {
-            const voiceBtn = document.getElementById('voiceBtn');
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                return;
-            }
+        <div class="catalog-toolbar">
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="scenario-search" type="search" placeholder="Найти сценарий..." aria-label="Поиск сценария">
+          </label>
+          <div class="filter-chips" role="group" aria-label="Фильтр сценариев">
+            <button class="filter-chip active" data-filter="all" type="button">Все (10)</button>
+            <button class="filter-chip" data-filter="everyday" type="button">Повседневное</button>
+            <button class="filter-chip" data-filter="travel" type="button">Путешествия</button>
+            <button class="filter-chip" data-filter="work" type="button">Работа</button>
+          </div>
+        </div>
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioChunks = [];
-                mediaRecorder = new MediaRecorder(stream);
+        <div class="scenario-grid" id="scenario-grid">
+          <!-- 10 scenario cards generated dynamically -->
+        </div>
+        <div class="catalog-note"><span>✦</span> Каждый сценарий адаптируется под выбранный уровень (A1-A2, B1-B2, C1) и язык.</div>
+      </section>
 
-                mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) audioChunks.push(e.data);
-                };
+      <!-- ======================================================== -->
+      <!-- PAGE 3: ЧАТ-ТРЕНАЖЁР С ИИ (INTERACTIVE CONVERSATION)     -->
+      <!-- ======================================================== -->
+      <section class="page" id="page-chat" aria-labelledby="chat-title">
+        <div class="chat-container panel">
+          <!-- Chat header bar -->
+          <div class="chat-header">
+            <div class="chat-scenario-info">
+              <button class="back-link mini-back" id="chat-back" type="button">← К каталогу</button>
+              <div>
+                <h2 id="chat-scenario-title">Знакомство</h2>
+                <div class="chat-meta">
+                  <span class="chat-role" id="chat-bot-role">Собеседник: участник языкового клуба</span>
+                  <span class="chat-badge" id="chat-level-badge">A1-A2</span>
+                  <span class="chat-badge mode-badge" id="chat-mode-badge">Стандартный</span>
+                </div>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <button class="button button-outline" id="btn-show-hints" type="button" title="Получить опорные слова и пример фразы">
+                <span>💡</span> Подсказка
+              </button>
+              <button class="button button-danger" id="btn-finish-dialogue" type="button">
+                <span>🏁</span> Завершить диалог
+              </button>
+            </div>
+          </div>
 
-                mediaRecorder.onstop = async () => {
-                    voiceBtn.classList.remove('recording');
-                    voiceBtn.innerText = '🎤';
-                    voiceBtn.disabled = true;
+          <!-- Hints bar drawer (dropdown) -->
+          <div class="hints-drawer" id="hints-drawer" hidden>
+            <div class="hints-header">
+              <b>Опорные слова и фразы для этой ситуации</b>
+              <button class="icon-button close-hints-btn" id="close-hints" type="button">×</button>
+            </div>
+            <div class="hint-keywords" id="hint-keywords"></div>
+            <div class="hint-phrase-box">
+              <span>Пример формулировки:</span>
+              <p id="hint-example-phrase"></p>
+            </div>
+            <small class="hint-note">Использование подсказки будет мягко зафиксировано в статистике самостоятельности.</small>
+          </div>
 
-                    // Останавливаем все аудио-треки для освобождения микрофона
-                    stream.getTracks().forEach(track => track.stop());
+          <!-- Messages scroll area -->
+          <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+            <!-- Messages added here -->
+          </div>
 
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    if (audioBlob.size === 0) {
-                        voiceBtn.disabled = false;
-                        return;
-                    }
+          <!-- ASR speech preview and editing bar -->
+          <div class="speech-preview-bar" id="speech-preview-bar" hidden>
+            <div class="speech-preview-content">
+              <span class="rec-dot-active"></span>
+              <span class="small" id="speech-preview-status">Распознанная речь (можно отредактировать перед отправкой):</span>
+              <input type="text" id="speech-preview-input" aria-label="Правка распознанного текста">
+              <button class="button button-primary button-small" id="speech-preview-send" type="button">Отправить</button>
+              <button class="button button-quiet button-small" id="speech-preview-cancel" type="button">Отмена</button>
+            </div>
+          </div>
 
-                    const formData = new FormData();
-                    formData.append('audio', audioBlob, 'recording.webm');
+          <!-- Bottom input bar (hybrid text and voice) -->
+          <form class="chat-input-bar" id="chat-form">
+            <button class="voice-mic-button" id="chat-mic-btn" type="button" aria-label="Голосовой ввод (запись микрофона)" title="Нажмите для голосового ответа">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x2="16" x1="8" y2="23" y1="23"/></svg>
+            </button>
+            <input type="text" id="chat-text-input" placeholder="Напишите ответ или нажмите микрофон..." autocomplete="off">
+            <button class="button button-primary" id="chat-send-btn" type="submit">
+              <span>Отправить</span> <span aria-hidden="true">→</span>
+            </button>
+          </form>
+          <div class="chat-footer-note"><span>♧</span> Кликните на любое незнакомое слово в ответе бота, чтобы увидеть перевод и сохранить в словарь.</div>
+        </div>
+      </section>
 
-                    // Индикатор распознавания
-                    const loadingDiv = document.createElement('div');
-                    loadingDiv.className = 'message loading-msg';
-                    loadingDiv.id = 'voice-loading';
-                    loadingDiv.innerText = 'Распознавание речи (Groq Whisper)...';
-                    document.getElementById('messagesArea').appendChild(loadingDiv);
-                    document.getElementById('messagesArea').scrollTop = document.getElementById('messagesArea').scrollHeight;
+      <!-- ======================================================== -->
+      <!-- PAGE 4: ПРАКТИКА И АДАПТИВНЫЕ УПРАЖНЕНИЯ                 -->
+      <!-- ======================================================== -->
+      <section class="page" id="page-practice" aria-labelledby="practice-title">
+        <div class="page-heading">
+          <div>
+            <span class="section-kicker">ЗАКРЕПЛЕНИЕ МАТЕРИАЛА</span>
+            <h1 id="practice-title">Адаптивная практика</h1>
+            <p class="muted">Упражнения трех типов (грамматика, лексика, аудирование), сформированные по вашим личным ошибкам в диалогах.</p>
+          </div>
+          <div class="practice-heading-actions">
+            <span class="offline-badge" id="offline-storage-status"><span>●</span> Загружено офлайн (15)</span>
+          </div>
+        </div>
 
-                    try {
-                        const res = await fetch('/api/voice', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const data = await res.json();
-                        document.getElementById('voice-loading')?.remove();
+        <div class="practice-tabs" role="tablist">
+          <button class="practice-tab active" data-category="all" type="button">Все типы</button>
+          <button class="practice-tab" data-category="Grammar" type="button">Грамматика</button>
+          <button class="practice-tab" data-category="Vocabulary" type="button">Лексика</button>
+          <button class="practice-tab" data-category="Listening" type="button">Аудирование</button>
+          <button class="practice-tab" data-category="offline" type="button">Загруженные задания (Офлайн)</button>
+        </div>
 
-                        if (res.ok && data.text) {
-                            document.getElementById('userInput').value = data.text;
-                            sendMessage();
-                        } else {
-                            alert(data.text || 'Не удалось распознать речь.');
-                        }
-                    } catch (err) {
-                        document.getElementById('voice-loading')?.remove();
-                        alert('Ошибка отправки аудио: ' + err.message);
-                    } finally {
-                        voiceBtn.disabled = false;
-                    }
-                };
+        <div class="exercises-container" id="exercises-container">
+          <!-- Exercise cards dynamically injected -->
+        </div>
+      </section>
 
-                mediaRecorder.start();
-                voiceBtn.classList.add('recording');
-                voiceBtn.innerText = '⏹';
-            } catch (err) {
-                alert('Не удалось получить доступ к микрофону: ' + err.message);
-            }
-        }
+      <!-- ======================================================== -->
+      <!-- PAGE 5: СЛОВАРЬ И ИНТЕРВАЛЬНОЕ ПОВТОРЕНИЕ (SRS)          -->
+      <!-- ======================================================== -->
+      <section class="page" id="page-dictionary" aria-labelledby="dict-title">
+        <div class="page-heading">
+          <div>
+            <span class="section-kicker">ИНТЕРВАЛЬНОЕ ПОВТОРЕНИЕ</span>
+            <h1 id="dict-title">Личный словарь</h1>
+            <p class="muted">Слова, сохраненные из реальных диалогов. Статус «Изучено» подтверждается ответом без подсказки при отложенном повторении.</p>
+          </div>
+          <div class="dict-heading-actions">
+            <button class="button button-primary" id="btn-start-flashcards" type="button">🎴 Тренажёр карточек</button>
+          </div>
+        </div>
 
-        async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const messagesArea = document.getElementById('messagesArea');
-            const text = input.value.trim();
+        <!-- Flashcards Trainer Mode Drawer -->
+        <div class="flashcards-modal panel" id="flashcards-modal" hidden>
+          <div class="flashcards-header">
+            <h3>Тренажёр карточек SRS</h3>
+            <span class="fc-counter" id="fc-counter">1 / 5</span>
+            <button class="icon-button" id="close-flashcards" type="button">×</button>
+          </div>
+          <div class="flashcard" id="active-flashcard">
+            <div class="card-inner" id="card-inner">
+              <div class="card-front">
+                <span class="fc-tag">Слово</span>
+                <h2 id="fc-word">appointment</h2>
+                <span class="fc-phonetic" id="fc-phonetic">/əˈpɔɪnt.mənt/</span>
+                <button class="button button-quiet small" id="fc-listen" type="button">▶ Озвучить</button>
+                <div class="fc-flip-hint">Нажмите, чтобы перевернуть</div>
+              </div>
+              <div class="card-back">
+                <span class="fc-tag">Перевод и контекст</span>
+                <h3 id="fc-translation">деловая встреча / приём</h3>
+                <p id="fc-context">«I have an appointment at 10 AM with our client.»</p>
+                <div class="fc-actions">
+                  <button class="button button-danger" id="fc-btn-forgot" type="button">Не помню</button>
+                  <button class="button button-outline" id="fc-btn-hard" type="button">Трудно</button>
+                  <button class="button button-primary" id="fc-btn-know" type="button">Знаю (без подсказки)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            if (!text) return;
+        <div class="dict-table-wrap panel">
+          <div class="dict-toolbar">
+            <input type="search" id="dict-search" placeholder="Поиск по словарю..." aria-label="Поиск слов">
+            <div class="dict-counts">
+              <span>Всего слов: <b id="total-words-count">5</b></span>
+              <span>Изучено: <b id="mastered-words-count">2</b></span>
+              <span>К повторению: <b id="due-words-count">3</b></span>
+            </div>
+          </div>
+          <div class="dict-list" id="dict-list">
+            <!-- Words list -->
+          </div>
+        </div>
+      </section>
 
-            // 1. Выводим на экран сообщение пользователя
-            const userDiv = document.createElement('div');
-            userDiv.className = 'message user-msg';
-            userDiv.innerText = text;
-            messagesArea.appendChild(userDiv);
-            input.value = '';
-            messagesArea.scrollTop = messagesArea.scrollHeight;
+      <!-- ======================================================== -->
+      <!-- PAGE 6: ПРОГРЕСС И ДОСТИЖЕНИЯ                            -->
+      <!-- ======================================================== -->
+      <section class="page" id="page-progress" aria-labelledby="progress-title">
+        <div class="page-heading">
+          <div>
+            <span class="section-kicker">ЧЕСТНАЯ АНАЛИТИКА</span>
+            <h1 id="progress-title">Прогресс и статистика</h1>
+            <p class="muted">Отдельный учет спонтанных ответов своими словами и ответов с использованием подсказок.</p>
+          </div>
+        </div>
 
-            // 2. Показываем анимацию загрузки ("ИИ думает...")
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'message loading-msg';
-            loadingDiv.id = 'loading';
-            loadingDiv.innerText = 'ИИ печатает...';
-            messagesArea.appendChild(loadingDiv);
-            messagesArea.scrollTop = messagesArea.scrollHeight;
+        <div class="progress-hero-grid">
+          <div class="metric-card panel">
+            <span class="metric-icon">🔥</span>
+            <div>
+              <span class="small muted">Дней подряд (Streak)</span>
+              <h2 id="prog-streak">3 дня</h2>
+            </div>
+          </div>
+          <div class="metric-card panel">
+            <span class="metric-icon">💬</span>
+            <div>
+              <span class="small muted">Завершенных диалогов</span>
+              <h2 id="prog-scenarios">4</h2>
+            </div>
+          </div>
+          <div class="metric-card panel">
+            <span class="metric-icon">📚</span>
+            <div>
+              <span class="small muted">Выученных слов</span>
+              <h2 id="prog-words">18 слов</h2>
+            </div>
+          </div>
+          <div class="metric-card panel">
+            <span class="metric-icon">🎯</span>
+            <div>
+              <span class="small muted">Самостоятельность</span>
+              <h2 id="prog-independence">78%</h2>
+            </div>
+          </div>
+        </div>
 
-            try {
-                // 3. Делаем реальный запрос к нашему .NET API эндпоинту
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
-                });
-                const data = await response.json();
+        <!-- Comparative independence bar -->
+        <div class="independence-card panel">
+          <div class="indep-header">
+            <div>
+              <span class="section-kicker">КЛЮЧЕВОЕ УТП LINGUABOT</span>
+              <h3>Самостоятельные ответы vs Ответы с подсказкой</h3>
+            </div>
+            <span class="indep-ratio" id="indep-ratio-text">14 без подсказки / 4 с подсказкой</span>
+          </div>
+          <div class="dual-progress-bar">
+            <span class="dual-bar-independent" id="dual-bar-indep" style="width:78%" title="Самостоятельные ответы"></span>
+            <span class="dual-bar-hinted" id="dual-bar-hint" style="width:22%" title="Ответы с подсказкой"></span>
+          </div>
+          <div class="dual-legend">
+            <div><i class="legend-dot indep-dot"></i> <b>Своими словами:</b> без заготовок и подсказок</div>
+            <div><i class="legend-dot hint-dot"></i> <b>С помощью:</b> были открыты опорные слова</div>
+          </div>
+        </div>
 
-                // Удаляем индикатор загрузки
-                document.getElementById('loading').remove();
+        <!-- Achievements Gallery -->
+        <div class="achievements-section panel">
+          <div class="ach-header">
+            <span class="section-kicker">ГЕЙМИФИКАЦИЯ И МОТИВАЦИЯ</span>
+            <h3>Достижения и бейджи</h3>
+          </div>
+          <div class="achievements-grid" id="achievements-grid">
+            <!-- Injected via JS -->
+          </div>
+        </div>
 
-                // 4. Выводим ответ, который прислал сервер на C#
-                const aiDiv = document.createElement('div');
-                aiDiv.className = 'message ai-msg';
+        <!-- Dialogue History & Past Feedback -->
+        <div class="history-section panel" style="margin-top:20px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px">
+            <div>
+              <span class="section-kicker">ИСТОРИЯ ОБУЧЕНИЯ</span>
+              <h3 style="margin:4px 0 0;font-size:16px">Завершённые диалоги и разборы</h3>
+            </div>
+            <span class="muted small" id="history-count">Всего диалогов: 0</span>
+          </div>
+          <div class="history-list" id="dialogues-history-list">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </section>
 
-                const textSpan = document.createElement('span');
-                textSpan.innerText = data.text;
-                aiDiv.appendChild(textSpan);
+      <!-- ======================================================== -->
+      <!-- PAGE 7: ПРОФИЛЬ (MATCHES SUPPLIED HAND SKETCH)           -->
+      <!-- ======================================================== -->
+      <section class="page" id="page-profile" aria-labelledby="profile-title">
+        <div class="profile-wrap">
+          <div class="profile-actionbar">
+            <button class="back-link" id="profile-back" type="button"><span aria-hidden="true">←</span> BACK</button>
+            <div class="profile-local-brand">
+              <span class="brand-mark mini-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+              <span>Lingua<span class="brand-accent">Bot</span></span>
+              <small id="profile-title">PROFILE</small>
+            </div>
+            <button class="edit-link" id="profile-edit" type="button">EDIT <span aria-hidden="true">↗</span></button>
+          </div>
 
-                const speakBtn = document.createElement('button');
-                speakBtn.className = 'speak-btn';
-                speakBtn.title = 'Озвучить ответ (Piper TTS)';
-                speakBtn.innerText = '🔊';
-                speakBtn.onclick = () => playTts(speakBtn, data.text);
-                aiDiv.appendChild(speakBtn);
+          <section class="profile-identity panel" aria-label="Данные пользователя">
+            <div class="identity-copy" id="profile-summary">
+              <div class="identity-line"><span class="identity-bullet">✎</span><span id="profile-summary-name">guest_user</span></div>
+              <div class="identity-line"><span class="identity-bullet">✉</span><span id="profile-summary-email">email не указан</span></div>
+              <div class="identity-line"><span class="identity-bullet">◉</span><span>native: <b id="profile-summary-native">Русский</b></span></div>
+              <button class="profile-login-link" id="profile-login" type="button">Войти или зарегистрироваться, чтобы сохранить прогресс →</button>
+            </div>
+            <div class="profile-avatar-wrap">
+              <div class="profile-avatar-large" aria-label="Аватар пользователя"><span id="profile-avatar-initials">G</span></div>
+              <span class="avatar-caption">Ваш профиль</span>
+            </div>
+          </section>
 
-                messagesArea.appendChild(aiDiv);
-            } catch (error) {
-                document.getElementById('loading').remove();
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'message ai-msg';
-                errorDiv.style.background = '#f44336';
-                errorDiv.innerText = 'Ошибка: Бэкенд не отвечает.';
-                messagesArea.appendChild(errorDiv);
-            }
+          <form id="profile-form" class="profile-editor" novalidate>
+            <div class="profile-edit-fields" id="profile-edit-fields" hidden>
+              <div class="edit-section-heading">
+                <div>
+                  <span class="section-kicker">НАСТРОЙКИ ПРОФИЛЯ</span>
+                  <h2>Личные данные и обучение</h2>
+                </div>
+                <span class="demo-note">Изменения сохраняются на сервере</span>
+              </div>
+              <div class="profile-edit-grid">
+                <label class="form-field"><span>Имя пользователя</span><input type="text" id="profile-name" name="name" autocomplete="name" maxlength="60" placeholder="Ваше имя"></label>
+                <label class="form-field"><span>Email</span><input type="email" id="profile-email" name="email" autocomplete="email" maxlength="120" placeholder="name@example.com"></label>
+                <label class="form-field"><span>Родной язык</span>
+                  <select name="nativeLanguage" id="native-language">
+                    <option value="ru">Русский (RU)</option>
+                    <option value="en">English (EN)</option>
+                    <option value="pl">Polski (PL)</option>
+                    <option value="es">Español (ES)</option>
+                  </select>
+                </label>
+                <label class="form-field"><span>Изучаемый язык</span>
+                  <select name="targetLanguage" id="profile-language">
+                    <option value="en">English (EN)</option>
+                    <option value="pl">Polski (PL)</option>
+                    <option value="es">Español (ES)</option>
+                    <option value="ru">Русский (RU)</option>
+                  </select>
+                </label>
+                <label class="form-field"><span>Уровень</span>
+                  <select name="level" id="profile-level">
+                    <option value="A1-A2">A1–A2 · Начальный</option>
+                    <option value="B1-B2">B1–B2 · Средний</option>
+                    <option value="C1">C1 · Продвинутый</option>
+                  </select>
+                </label>
+                <label class="form-field"><span>Цель / роль обучения</span>
+                  <select name="role" id="profile-role">
+                    <option value="travel">Путешествия</option>
+                    <option value="work">Работа</option>
+                    <option value="study">Учёба</option>
+                  </select>
+                </label>
+                <label class="form-field"><span>Тема оформления</span>
+                  <select name="theme" id="profile-theme-select">
+                    <option value="system">🌓 Системная (авто)</option>
+                    <option value="light">☀️ Светлая</option>
+                    <option value="dark">🌙 Тёмная</option>
+                  </select>
+                </label>
+              </div>
 
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        }
+              <!-- Push Reminders Opt-in -->
+              <div class="reminder-setting">
+                <div class="reminder-symbol">♧</div>
+                <div class="reminder-copy">
+                  <b>Ежедневные напоминания о практике</b>
+                  <small>Включаются только по вашему согласию (opt-in) с учетом часового пояса.</small>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="reminders-enabled" name="remindersEnabled">
+                  <span class="switch-slider"></span>
+                  <span class="sr-only">Включить напоминания</span>
+                </label>
+              </div>
 
-        async function playTts(btn, text) {
-            if (btn.dataset.playing === 'true') return;
-            btn.dataset.playing = 'true';
-            const originalText = btn.innerText;
-            btn.innerText = '⏳';
+              <div class="form-actions profile-edit-actions">
+                <button class="button button-primary" id="profile-save" type="submit">Сохранить изменения</button>
+                <button class="button button-quiet" id="profile-cancel" type="button">Отмена</button>
+                <span id="profile-message" class="form-message" role="status" aria-live="polite"></span>
+              </div>
+            </div>
+          </form>
 
-            try {
-                const url = '/api/tts?text=' + encodeURIComponent(text);
-                const audio = new Audio(url);
+          <!-- Radar Chart STATS -->
+          <section class="stats-section" aria-labelledby="stats-title">
+            <div class="stats-heading">
+              <div>
+                <span class="section-kicker">ВАША АКТИВНОСТЬ</span>
+                <h2 id="stats-title">STATS</h2>
+              </div>
+              <span class="stats-hint">Наведите на точку диаграммы, чтобы увидеть точный балл</span>
+            </div>
+            <div class="language-stats-grid" id="language-stats-grid">
+              <!-- Rendered via JS -->
+            </div>
+          </section>
 
-                audio.onended = () => {
-                    btn.dataset.playing = 'false';
-                    btn.innerText = originalText;
-                };
+          <!-- Privacy & Data Control Zone -->
+          <section class="profile-data-actions panel">
+            <div class="data-actions-copy">
+              <span class="section-kicker">КОНТРОЛЬ ДАННЫХ</span>
+              <h2>Данные и безопасность</h2>
+              <p class="muted small">Вы можете удалить историю обучения или стереть аккаунт. Перед удалением потребуется подтверждение.</p>
+            </div>
+            <div class="data-action-buttons">
+              <button class="danger-action" id="delete-history" type="button">
+                <span class="danger-icon">⌫</span>
+                <span><b>Удалить историю</b><small>Реплики, разборы и попытки</small></span>
+                <i>→</i>
+              </button>
+              <button class="danger-action" id="delete-account" type="button">
+                <span class="danger-icon">×</span>
+                <span><b>Удалить аккаунт</b><small>Профиль и связанные данные</small></span>
+                <i>→</i>
+              </button>
+            </div>
+          </section>
+          <p class="privacy-note"><span>♧</span> Аутентификация безопасна. Пароли хранятся строго в виде криптографического хеша на стороне сервера.</p>
+        </div>
+      </section>
+    </main>
 
-                audio.onerror = async () => {
-                    btn.dataset.playing = 'false';
-                    btn.innerText = originalText;
-                    try {
-                        const res = await fetch(url);
-                        const err = await res.json();
-                        alert(err.error || 'Ошибка воспроизведения речи.');
-                    } catch {
-                        alert('Не удалось получить озвучку от сервера.');
-                    }
-                };
+    <footer class="site-footer">
+      <span>© 2026 LinguaBot · Дипломный проект «Разработка ИИ-тренера для изучения иностранных языков»</span>
+      <span>Учитесь говорить — шаг за шагом</span>
+      <button type="button" id="footer-auth">Вход в аккаунт</button>
+    </footer>
+  </div>
 
-                await audio.play();
-            } catch (err) {
-                btn.dataset.playing = 'false';
-                btn.innerText = originalText;
-                alert('Ошибка воспроизведения: ' + err.message);
-            }
-        }</script>
+  <!-- ======================================================== -->
+  <!-- MODAL: ДИАЛОГОВЫЙ РАЗБОР И ОБРАТНАЯ СВЯЗЬ               -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="analysis-modal" hidden>
+    <section class="modal analysis-modal-box" role="dialog" aria-modal="true" aria-labelledby="analysis-title">
+      <button class="modal-close" type="button" data-close-modal aria-label="Закрыть">×</button>
+      <div class="modal-brand"><span class="brand-mark"><span></span><span></span><span></span></span><span>Lingua<span class="brand-accent">Bot</span> Feedback</span></div>
+      <h2 id="analysis-title">Разбор диалога</h2>
+      <p class="muted" id="analysis-subtitle">Результаты вашей беседы и зоны роста</p>
+
+      <div class="analysis-feedback-card panel">
+        <div class="feedback-overall">
+          <b>Общий итог:</b>
+          <p id="analysis-overall-text">Отличная беседа! Вы успешно решили коммуникативную задачу.</p>
+        </div>
+        <div class="feedback-strengths">
+          <b>Удачные формулировки:</b>
+          <p id="analysis-strengths-text">Использовали естественные обороты и вежливые формы.</p>
+        </div>
+      </div>
+
+      <div class="errors-breakdown">
+        <h4 id="errors-count-heading">Разбор ключевых моментов (до 3 ошибок)</h4>
+        <div class="errors-list" id="analysis-errors-list">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <div class="analysis-actions">
+        <button class="button button-primary button-full" id="btn-analysis-exercises" type="button">📝 Перейти к закрепляющим упражнениям</button>
+        <button class="button button-outline button-full" id="btn-analysis-retry-nocheat" type="button">🔄 Режим «Без заготовки» (Новая попытка)</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: СЛОВАРНЫЙ ПЕРЕВОД ПО КЛИКУ НА СЛОВО               -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="word-modal" hidden>
+    <section class="modal word-modal-box" role="dialog" aria-modal="true" aria-labelledby="word-modal-title">
+      <button class="modal-close" type="button" data-close-modal aria-label="Закрыть">×</button>
+      <span class="section-kicker">СЛОВАРЬ И ПЕРЕВОДЧИК</span>
+      <h2 id="word-modal-title">appointment</h2>
+      <p class="word-modal-phonetic" id="word-modal-phonetic">/əˈpɔɪnt.mənt/</p>
+      
+      <div class="word-translation-box panel">
+        <b>Перевод:</b>
+        <p id="word-modal-trans">деловая встреча / приём</p>
+        <small class="muted" id="word-modal-context">«I have an appointment at 10 AM.»</small>
+      </div>
+
+      <div class="word-modal-actions">
+        <button class="button button-primary button-full" id="btn-save-to-dict" type="button">⭐ Сохранить в личный словарь</button>
+        <button class="button button-quiet" id="btn-speak-word" type="button">▶ Озвучить слово</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ВХОД И РЕГИСТРАЦИЯ (AUTH MODAL)                   -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="auth-modal" hidden>
+    <section class="modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <button class="modal-close" type="button" data-close-modal aria-label="Закрыть">×</button>
+      <div class="modal-brand"><span class="brand-mark"><span></span><span></span><span></span></span><span>Lingua<span class="brand-accent">Bot</span></span></div>
+      <h2 id="auth-title">Рады вас видеть!</h2>
+      <p class="muted">Войдите или зарегистрируйтесь, чтобы сохранять прогресс и историю между устройствами.</p>
+      
+      <div class="auth-tabs" role="tablist">
+        <button class="auth-tab active" data-auth-mode="login" role="tab" aria-selected="true" type="button">Вход</button>
+        <button class="auth-tab" data-auth-mode="register" role="tab" aria-selected="false" type="button">Регистрация</button>
+      </div>
+
+      <form id="auth-form" class="auth-form">
+        <label class="form-field" id="auth-name-wrap" hidden>
+          <span>Имя пользователя</span>
+          <input type="text" name="name" autocomplete="name" placeholder="Как к вам обращаться">
+        </label>
+        <label class="form-field">
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="email" placeholder="name@example.com" required>
+        </label>
+        <label class="form-field">
+          <span>Пароль</span>
+          <input type="password" name="password" autocomplete="current-password" minlength="4" placeholder="Не менее 4 символов" required>
+        </label>
+        <button class="button button-primary button-full" type="submit" id="auth-submit">Войти</button>
+        <button class="text-button forgot-button" type="button" id="forgot-password">Забыли пароль?</button>
+        <p class="form-message" id="auth-message" role="status" aria-live="polite"></p>
+      </form>
+
+      <div class="auth-divider"><span>или продолжить через</span></div>
+      <div class="social-buttons">
+        <button class="social-button" data-provider="google" type="button"><b>G</b> Google</button>
+        <button class="social-button" data-provider="apple" type="button"><b>●</b> Apple</button>
+      </div>
+      <button class="phone-button" id="phone-auth" type="button"><span>▯</span> Войти по номеру телефона</button>
+      <p class="legal-note">Пароли надёжно защищены и хранятся в виде криптографического хеша на стороне сервера.</p>
+    </section>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ВХОД ПО ТЕЛЕФОНУ (SMS AUTH)                      -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="phone-modal" hidden>
+    <section class="modal phone-modal" role="dialog" aria-modal="true" aria-labelledby="phone-title">
+      <button class="modal-close" type="button" data-close-modal aria-label="Закрыть">×</button>
+      <h2 id="phone-title">Вход по телефону</h2>
+      <p class="muted">Отправим SMS-код подтверждения на ваш номер.</p>
+      <form id="phone-form" class="auth-form">
+        <label class="form-field">
+          <span>Номер телефона</span>
+          <input type="tel" name="phone" autocomplete="tel" placeholder="+7 900 000-00-00" required>
+        </label>
+        <label class="form-field" id="phone-code-wrap" hidden>
+          <span>Код подтверждения (демо: 1234)</span>
+          <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Введите код">
+        </label>
+        <button class="button button-primary button-full" id="phone-submit" type="submit">Получить код</button>
+        <p class="form-message" id="phone-message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ПОДТВЕРЖДЕНИЕ ДЕЙСТВИЯ (CONFIRM MODAL)           -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="confirm-modal" hidden>
+    <section class="modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div class="confirm-icon">!</div>
+      <h2 id="confirm-title">Подтвердите действие</h2>
+      <p class="muted" id="confirm-copy">Это действие нельзя отменить.</p>
+      <div class="confirm-actions">
+        <button class="button button-outline" type="button" data-close-modal>Отмена</button>
+        <button class="button button-danger" id="confirm-action" type="button">Подтвердить</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ПОЛНЫЙ ТЕСТ ОПРЕДЕЛЕНИЯ УРОВНЯ (12 ВОПРОСОВ CEFR) -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="placement-modal" hidden>
+    <section class="modal placement-modal-box" role="dialog" aria-modal="true" aria-labelledby="placement-modal-title">
+      <button class="modal-close" type="button" data-close-modal aria-label="Закрыть">×</button>
+      <div class="modal-brand"><span class="brand-mark"><span></span><span></span><span></span></span><span>Lingua<span class="brand-accent">Bot</span> Placement Test</span></div>
+      <div class="placement-header-row">
+        <div>
+          <span class="section-kicker" id="placement-skill-kicker">ГРАММАТИКА И ЛЕКСИКА</span>
+          <h2 id="placement-modal-title">Определение уровня владения</h2>
+        </div>
+        <span class="placement-q-pill" id="placement-q-counter">Вопрос 1 / 12</span>
+      </div>
+      <div class="progress-track" style="margin: 10px 0 16px;"><span id="placement-progress-bar" style="width: 8%;"></span></div>
+
+      <div id="placement-question-body">
+        <p class="placement-prompt" id="placement-prompt-text">Загрузка вопроса…</p>
+        <div class="placement-options-grid" id="placement-options-list">
+          <!-- Options injected via JS -->
+        </div>
+      </div>
+
+      <div class="placement-feedback-box panel" id="placement-feedback-box" hidden style="margin-top: 14px; padding: 12px; font-size: 11px;">
+        <!-- Explanation -->
+      </div>
+
+      <div class="placement-modal-actions" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center;">
+        <span class="muted small" id="placement-score-live">Баллы: 0</span>
+        <button class="button button-primary" id="btn-placement-next" type="button" disabled>Следующий вопрос <span>→</span></button>
+      </div>
+
+      <!-- Result Screen (shown when complete) -->
+      <div id="placement-result-body" hidden style="text-align: center; padding: 10px 0;">
+        <div style="font-size: 40px; margin-bottom: 8px;">🎓</div>
+        <h3>Тест успешно завершён!</h3>
+        <div style="display: inline-block; background: var(--primary); color: white; padding: 6px 18px; border-radius: 99px; font-weight: 800; font-size: 18px; margin: 12px 0;" id="placement-result-level">Уровень: B1-B2</div>
+        <p class="muted" id="placement-result-desc" style="font-size: 12px; line-height: 1.5; margin: 0 0 20px;">Ваш результат сохранён в профиле.</p>
+        <button class="button button-primary button-full" id="btn-placement-apply" type="button">Перейти к подходящим диалогам <span>→</span></button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="/app.js?v=10" defer></script>
 </body>
 </html>

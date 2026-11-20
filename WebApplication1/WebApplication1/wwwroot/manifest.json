@@ -1,0 +1,21 @@
+{
+  "short_name": "LinguaBot",
+  "name": "LinguaBot — ИИ-тренер для изучения языков",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/#today",
+  "background_color": "#f5f7fc",
+  "theme_color": "#4d76f6",
+  "display": "standalone",
+  "orientation": "portrait"
+}

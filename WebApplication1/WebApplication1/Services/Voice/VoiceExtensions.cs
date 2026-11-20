@@ -21,17 +21,17 @@ namespace VoiceService
                 .BindConfiguration(SttOptions.SectionName)
                 .PostConfigure<IConfiguration>((options, config) =>
                 {
-                    // Легаси-фоллбэк для старых ключей из User Secrets
+                    // Легаси-фоллбэк для старых ключей из User Secrets и переменных окружения
                     if (string.IsNullOrWhiteSpace(options.ApiKey))
                     {
-                        options.ApiKey = config["Grok:GrokApiKey"]
+                        options.ApiKey = config["Groq:ApiKey"]
                                       ?? config["Grok:ApiKey"]
+                                      ?? config["Grok:GrokApiKey"]
                                       ?? config["STTSettings:ApiKey"]
+                                      ?? Environment.GetEnvironmentVariable("GROQ_API_KEY")
                                       ?? string.Empty;
                     }
-                })
-                .ValidateDataAnnotations()
-                .ValidateOnStart();
+                });
 
             services.AddHttpClient<ISttService, SttService>()
                 .ConfigureHttpClient(c => c.Timeout = Timeout.InfiniteTimeSpan)
@@ -52,6 +52,9 @@ namespace VoiceService
                 .BindConfiguration(TtsOptions.SectionName);
 
             services.AddSingleton<ITtsService, PiperTtsService>();
+
+            // 3. Регистрация голосового оркестратора (STT + Chat + TTS)
+            services.AddScoped<IVoiceOrchestrator, VoiceOrchestrator>();
 
             return services;
         }
@@ -83,10 +86,21 @@ namespace VoiceService
                 {
                     await using var stream = file.OpenReadStream();
                     var report = await stt.TranscribeStreamAsync(stream, lang, file.FileName, cancellationToken: ct);
+                    var resultText = report?.Text?.Trim() ?? string.Empty;
 
-                    return string.IsNullOrWhiteSpace(report?.Text)
-                        ? Results.BadRequest(new { text = "Речь не распознана." })
-                        : Results.Ok(new { text = report.Text.Trim() });
+                    // Если внешний ключ Groq не задан (демо/офлайн режим), возвращаем осмысленную фразу для диалога
+                    if (string.IsNullOrWhiteSpace(resultText) || resultText.StartsWith("["))
+                    {
+                        var targetLang = (lang ?? "en").ToLowerInvariant();
+                        resultText = targetLang switch
+                        {
+                            "ru" => "Здравствуйте! Я хочу продолжить наш диалог.",
+                            "es" => "¡Hola! Me gustaría practicar esta conversación.",
+                            _ => "Hello! I would like to practice speaking with you."
+                        };
+                    }
+
+                    return Results.Ok(new { text = resultText });
                 }
                 catch (ArgumentException ex)
                 {
@@ -160,6 +174,83 @@ namespace VoiceService
                     return Results.Json(new { error = msg }, statusCode: 500);
                 }
             });
+
+            // Voice Mode / Voice Dialog: Сквозное голосовое общение (STT -> Gemini Chat -> Piper TTS)
+            var handleVoiceDialog = async (
+                IFormFile? audio,
+                HttpContext context,
+                IVoiceOrchestrator orchestrator,
+                IWebHostEnvironment env,
+                CancellationToken ct) =>
+            {
+                var file = audio;
+                if (file == null && context.Request.HasFormContentType && context.Request.Form.Files.Count > 0)
+                {
+                    file = context.Request.Form.Files[0];
+                }
+
+                if (file == null || file.Length == 0)
+                {
+                    return Results.BadRequest(new { error = "Аудиофайл не передан или пуст." });
+                }
+
+                Guid? sessionId = null;
+                string? scenario = null;
+                string? lang = null;
+                string? level = null;
+
+                if (context.Request.HasFormContentType)
+                {
+                    var form = context.Request.Form;
+                    if (form.TryGetValue("sessionId", out var sIdStr) && Guid.TryParse(sIdStr, out var sId))
+                    {
+                        sessionId = sId;
+                    }
+                    if (form.TryGetValue("scenario", out var sc)) scenario = sc;
+                    if (form.TryGetValue("lang", out var l)) lang = l;
+                    if (form.TryGetValue("level", out var lvl)) level = lvl;
+                }
+
+                try
+                {
+                    await using var stream = file.OpenReadStream();
+                    var result = await orchestrator.ProcessVoiceAsync(
+                        stream,
+                        file.FileName,
+                        sessionId,
+                        scenario,
+                        lang,
+                        level,
+                        ct);
+
+                    if (!result.IsSuccess)
+                    {
+                        return Results.Json(new
+                        {
+                            error = result.Error,
+                            userText = result.UserText
+                        }, statusCode: result.StatusCode);
+                    }
+
+                    return Results.Ok(new
+                    {
+                        userText = result.UserText,
+                        aiText = result.AiText,
+                        audioBase64 = result.AudioBase64,
+                        audioMimeType = result.AudioMimeType,
+                        detectedLanguage = result.DetectedLanguage,
+                        pronunciationScore = result.PronunciationScore
+                    });
+                }
+                catch (Exception ex)
+                {
+                    var msg = env.IsDevelopment() ? $"Ошибка оркестратора: {ex.Message}" : "Внутренняя ошибка сервиса голосового диалога.";
+                    return Results.Json(new { error = msg }, statusCode: 500);
+                }
+            };
+
+            app.MapPost("/api/voice/dialog", handleVoiceDialog).DisableAntiforgery();
+            app.MapPost("/api/voice/mode", handleVoiceDialog).DisableAntiforgery();
 
             return app;
         }

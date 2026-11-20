@@ -191,10 +191,20 @@ namespace VoiceService
 
             if (!Path.IsPathRooted(exe))
             {
-                var localCandidate = Path.Combine(_environment.ContentRootPath, exe);
-                if (File.Exists(localCandidate))
+                var candidates = new[]
                 {
-                    return localCandidate;
+                    Path.Combine(_environment.ContentRootPath, exe),
+                    Path.Combine(_environment.ContentRootPath, exe + ".exe"),
+                    Path.Combine(_environment.ContentRootPath, "piper", "piper.exe"),
+                    Path.Combine(_environment.ContentRootPath, "piper.exe")
+                };
+
+                foreach (var candidate in candidates)
+                {
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
                 }
             }
 

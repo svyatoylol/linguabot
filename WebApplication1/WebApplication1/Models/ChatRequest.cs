@@ -5,7 +5,7 @@ namespace WebApplication1.Models
     /// </summary>
     public record ChatRequest(
         string Message,
-        int? SessionId = null,
+        Guid? SessionId = null,
         string? Scenario = null,
         string? Lang = null,
         string? Level = null

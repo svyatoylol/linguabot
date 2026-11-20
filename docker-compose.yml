@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: linguabot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: linguabot_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgre_secure_password_2026
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d linguabot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - linguabot_network
+
+  linguabot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: linguabot_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=linguabot_db;Username=postgres;Password=postgre_secure_password_2026
+      # Замените на ваши действующие ключи API:
+      - Gemini__ApiKey=${GEMINI_API_KEY:-}
+      - Gemini__Model=gemini-1.5-flash
+      - Grok__ApiKey=${GROK_API_KEY:-}
+      - Grok__ModelSTT=whisper-large-v3
+    volumes:
+      - linguabot_data:/app/App_Data
+      - ./WebApplication1/WebApplication1/piper_models:/app/piper_models
+    networks:
+      - linguabot_network
+
+volumes:
+  pgdata:
+    name: linguabot_pgdata
+  linguabot_data:
+    name: linguabot_data
+
+networks:
+  linguabot_network:
+    name: linguabot_network

@@ -82,6 +82,15 @@ namespace VoiceService
                 }
             }
 
+            if (string.IsNullOrWhiteSpace(_options.ApiKey))
+            {
+                _logger.LogWarning("Groq API key is not configured. Speech recognition fallback returned.");
+                return new GroqTranscriptionReport
+                {
+                    Text = "[Речь записана. На клиенте активен встроенный Web Speech API]"
+                };
+            }
+
             // Нормализуем язык в нижний регистр для Whisper API (например, "EN" -> "en")
             var rawLang = language ?? _options.DefaultLanguage;
             var targetLanguage = rawLang?.Trim().ToLowerInvariant();

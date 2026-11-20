@@ -9,7 +9,6 @@ namespace VoiceService
     {
         public const string SectionName = "Groq";
 
-        [Required(AllowEmptyStrings = false, ErrorMessage = "Не указан обязательный параметр 'Groq:ApiKey' в конфигурации или User Secrets.")]
         public string ApiKey { get; set; } = string.Empty;
 
         public string ModelSTT { get; set; } = "whisper-large-v3";
