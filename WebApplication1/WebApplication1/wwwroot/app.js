@@ -2082,9 +2082,10 @@ function initEventListeners() {
   $$('.social-button').forEach(btn => {
     btn.addEventListener('click', async () => {
       const provider = btn.dataset.provider;
+      const providerName = provider === 'yandex' ? 'Яндекс' : provider === 'vk' ? 'VK' : provider;
       try {
         const res = await apiRequest(`/auth/oauth/${provider}`, { method: 'POST' });
-        toast(res.message || `Вход через ${provider} выполнен!`, 'success');
+        toast(res.message || `Вход через ${providerName} выполнен!`, 'success');
         hideModal('auth-modal');
         loadProfile();
       } catch (err) {

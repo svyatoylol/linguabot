@@ -103,12 +103,36 @@ public static class AuthEndpoints
             });
         });
 
-        // OAuth провайдеры
+        // OAuth провайдеры (Yandex, VK и др.)
         app.MapPost("/api/auth/oauth/{provider}", (string provider, HttpContext ctx, LinguaDataStore store) =>
         {
+            if (string.IsNullOrWhiteSpace(provider))
+            {
+                return Results.BadRequest(new { error = "Провайдер авторизации не указан." });
+            }
+
+            var providerCode = provider.Trim().ToLowerInvariant();
+            var providerTitle = providerCode switch
+            {
+                "yandex" => "Яндекс",
+                "vk" => "VK",
+                _ => char.ToUpper(providerCode[0]) + providerCode[1..]
+            };
+
             var user = GetOrCreateCurrentUser(ctx, store);
-            user.Email ??= $"{provider.ToLowerInvariant()}_user@linguabot.app";
-            user.Name = $"{char.ToUpper(provider[0])}{provider[1..]} User";
+            user.Email ??= $"{providerCode}_user@linguabot.app";
+
+            var defaultName = providerCode switch
+            {
+                "yandex" => "Yandex User",
+                "vk" => "VK User",
+                _ => $"{char.ToUpper(providerCode[0])}{providerCode[1..]} User"
+            };
+
+            if (string.IsNullOrEmpty(user.Name) || user.Name == "Гость" || user.Name.EndsWith("User"))
+            {
+                user.Name = defaultName;
+            }
 
             store.Users[user.Id] = user;
             store.SaveToDisk();
@@ -116,7 +140,7 @@ public static class AuthEndpoints
 
             return Results.Ok(new
             {
-                message = $"Авторизация через {provider} успешна.",
+                message = $"Авторизация через {providerTitle} успешна.",
                 user = BuildUserProfile(user)
             });
         });

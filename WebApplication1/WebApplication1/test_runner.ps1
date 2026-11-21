@@ -20,7 +20,7 @@ $projectPath = if (Test-Path "WebApplication1/WebApplication1/WebApplication1.cs
 }
 
 Write-Host "Запуск сервера .NET 8 (порт $port)..." -ForegroundColor Yellow
-$proc = Start-Process -FilePath "dotnet" -ArgumentList "run --project $projectPath --urls $url" -PassThru -NoNewWindow
+$proc = Start-Process -FilePath "dotnet" -ArgumentList "run --no-launch-profile --project $projectPath --urls $url" -PassThru -NoNewWindow
 
 try {
     # 1. Ожидание готовности сервера
