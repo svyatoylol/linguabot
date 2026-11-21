@@ -56,6 +56,9 @@ namespace VoiceService
             // 3. Регистрация голосового оркестратора (STT + Chat + TTS)
             services.AddScoped<IVoiceOrchestrator, VoiceOrchestrator>();
 
+            // 4. Регистрация обработчика живого звонка через WebSocket (Voice Call Mode)
+            services.AddScoped<VoiceCallHandler>();
+
             return services;
         }
 
@@ -240,6 +243,24 @@ namespace VoiceService
 
             app.MapPost("/api/voice/dialog", handleVoiceDialog).DisableAntiforgery();
             app.MapPost("/api/voice/mode", handleVoiceDialog).DisableAntiforgery();
+
+            // Режим живого голосового звонка через WebSocket (Real-time Call Mode)
+            var handleWebSocketCall = async (HttpContext context, VoiceCallHandler callHandler) =>
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                    await callHandler.HandleCallAsync(context, webSocket);
+                }
+                else
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    await context.Response.WriteAsync("Ожидается подключение по протоколу WebSocket (ws://).");
+                }
+            };
+
+            app.Map("/ws/call", handleWebSocketCall);
+            app.Map("/ws/voice-call", handleWebSocketCall);
 
             return app;
         }

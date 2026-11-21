@@ -37,6 +37,9 @@ using (var scope = app.Services.CreateScope())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Поддержка WebSocket для режима живого звонка (Voice Call)
+app.UseWebSockets();
+
 // Эндпоинты
 app.MapChatEndpoints();
 app.MapVoiceEndpoints();
