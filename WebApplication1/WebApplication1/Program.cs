@@ -94,6 +94,9 @@ app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Поддержка WebSocket для режима живого звонка (Voice Call)
+app.UseWebSockets();
+
 // 5. Подключение модульных эндпоинтов 15 функций MVP
 app.MapAuthEndpoints();
 app.MapProfileEndpoints();
